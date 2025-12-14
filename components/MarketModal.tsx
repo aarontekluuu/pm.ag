@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import type { MarketEdge, TokenOrderbook } from "@/lib/types";
+import { getOpinionBaseUrl } from "@/lib/links";
 
 interface MarketModalProps {
   market: MarketEdge | null;
@@ -23,6 +24,7 @@ export function MarketModal({ market, isStale, onClose }: MarketModalProps) {
     loading: false,
     error: null,
   });
+  const [copied, setCopied] = useState(false);
 
   // Close on Escape key
   useEffect(() => {
@@ -72,6 +74,11 @@ export function MarketModal({ market, isStale, onClose }: MarketModalProps) {
     fetchOrderbook();
   }, [market]);
 
+  // Reset copied state when modal opens
+  useEffect(() => {
+    setCopied(false);
+  }, [market]);
+
   // Handle backdrop click
   const handleBackdropClick = useCallback(
     (e: React.MouseEvent) => {
@@ -79,6 +86,26 @@ export function MarketModal({ market, isStale, onClose }: MarketModalProps) {
     },
     [onClose]
   );
+
+  // Copy market ID to clipboard
+  const handleCopyMarketId = async () => {
+    if (!market) return;
+    try {
+      await navigator.clipboard.writeText(String(market.marketId));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textArea = document.createElement("textarea");
+      textArea.value = String(market.marketId);
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   if (!market) return null;
 
@@ -112,10 +139,23 @@ export function MarketModal({ market, isStale, onClose }: MarketModalProps) {
         {/* Header */}
         <div className="sticky top-0 bg-terminal-surface border-b border-terminal-border p-4 flex items-start justify-between gap-4">
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-terminal-border text-terminal-dim">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <button
+                onClick={handleCopyMarketId}
+                className="text-[10px] px-1.5 py-0.5 rounded bg-terminal-border text-terminal-dim hover:bg-terminal-muted hover:text-terminal-text transition-colors flex items-center gap-1"
+                title="Click to copy Market ID"
+              >
                 #{market.marketId}
-              </span>
+                {copied ? (
+                  <svg className="w-3 h-3 text-terminal-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                )}
+              </button>
               {isStale && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-terminal-warn/20 text-terminal-warn">
                   STALE
@@ -148,12 +188,12 @@ export function MarketModal({ market, isStale, onClose }: MarketModalProps) {
             <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4 text-center">
               <div className="text-[10px] text-terminal-dim tracking-wider mb-2">YES PRICE</div>
               <div className="text-3xl font-bold text-terminal-accent">{formatPrice(market.yes.price)}</div>
-              <div className="text-[10px] text-terminal-dim mt-1">{market.yes.tokenId}</div>
+              <div className="text-[10px] text-terminal-dim mt-1 truncate">{market.yes.tokenId}</div>
             </div>
             <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4 text-center">
               <div className="text-[10px] text-terminal-dim tracking-wider mb-2">NO PRICE</div>
               <div className="text-3xl font-bold text-terminal-danger">{formatPrice(market.no.price)}</div>
-              <div className="text-[10px] text-terminal-dim mt-1">{market.no.tokenId}</div>
+              <div className="text-[10px] text-terminal-dim mt-1 truncate">{market.no.tokenId}</div>
             </div>
           </div>
 
@@ -268,21 +308,57 @@ export function MarketModal({ market, isStale, onClose }: MarketModalProps) {
             </div>
           </div>
 
-          {/* Open on Opinion.trade Button */}
-          <a
-            href={market.marketUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 w-full py-4 bg-terminal-accent text-terminal-bg font-medium rounded-lg hover:bg-terminal-accent/90 transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-            </svg>
-            OPEN ON OPINION.TRADE
-          </a>
+          {/* Open on Opinion.trade Buttons */}
+          <div className="space-y-2">
+            <a
+              href={market.marketUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full py-4 bg-terminal-accent text-terminal-bg font-medium rounded-lg hover:bg-terminal-accent/90 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              OPEN ON OPINION.TRADE
+            </a>
+            
+            {/* Fallback: Browse all markets */}
+            <div className="flex items-center gap-2">
+              <a
+                href={getOpinionBaseUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-2 py-2 bg-terminal-border text-terminal-dim font-medium text-sm rounded-lg hover:bg-terminal-muted hover:text-terminal-text transition-colors"
+              >
+                BROWSE ALL MARKETS
+              </a>
+              <button
+                onClick={handleCopyMarketId}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-terminal-border text-terminal-dim font-medium text-sm rounded-lg hover:bg-terminal-muted hover:text-terminal-text transition-colors"
+              >
+                {copied ? (
+                  <>
+                    <svg className="w-4 h-4 text-terminal-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    COPIED!
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    COPY ID
+                  </>
+                )}
+              </button>
+            </div>
+            <p className="text-[10px] text-terminal-dim text-center">
+              If direct link fails, browse markets and search for ID #{market.marketId}
+            </p>
+          </div>
         </div>
       </div>
     </div>
   );
 }
-
