@@ -5,8 +5,9 @@ import { usePathname } from "next/navigation";
 import { ConnectWallet } from "./ConnectWallet";
 
 const navItems = [
-  { href: "/", label: "MARKETS", shortcut: "M" },
-  { href: "/arbitrage", label: "ARBITRAGE", shortcut: "A" },
+  { href: "/", label: "OPINION.TRADE ARB", shortcut: "O" },
+  { href: "/arbitrage", label: "CROSS-PLATFORM ARB", shortcut: "X" },
+  { href: "/portfolio", label: "PORTFOLIO", shortcut: "P" },
 ];
 
 export function NavBar() {
@@ -40,7 +41,7 @@ export function NavBar() {
                   key={item.href}
                   href={item.href}
                   className={`
-                    relative px-4 py-2 text-xs font-medium tracking-wider transition-all
+                    relative px-3 py-2 text-[11px] font-medium tracking-wider transition-all
                     ${
                       isActive
                         ? "text-terminal-bg bg-terminal-accent"
@@ -49,10 +50,10 @@ export function NavBar() {
                     rounded
                   `}
                 >
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-1.5">
                     <span
                       className={`
-                      hidden sm:inline text-[10px] px-1 py-0.5 rounded
+                      hidden md:inline text-[9px] px-1 py-0.5 rounded
                       ${
                         isActive
                           ? "bg-terminal-bg/20 text-terminal-bg"

@@ -1,17 +1,24 @@
 const PLATFORMS = [
   {
-    name: "Polymarket",
-    description: "Decentralized prediction market on Polygon",
-    status: "PLANNED",
-    color: "terminal-purple",
-    features: ["High liquidity", "Crypto settlement", "Wide market selection"],
+    name: "Opinion.trade",
+    description: "Prediction market platform with real-time pricing",
+    status: "LIVE",
+    color: "terminal-accent",
+    features: ["Real-time prices", "Edge detection", "Auto-refresh"],
   },
   {
     name: "Kalshi",
     description: "CFTC-regulated US prediction market",
-    status: "PLANNED",
+    status: "COMING SOON",
     color: "terminal-cyan",
     features: ["USD settlement", "Regulated", "Event contracts"],
+  },
+  {
+    name: "Polymarket",
+    description: "Decentralized prediction market on Polygon",
+    status: "COMING SOON",
+    color: "terminal-purple",
+    features: ["High liquidity", "Crypto settlement", "Wide market selection"],
   },
 ];
 
@@ -22,20 +29,24 @@ export default function ArbitragePage() {
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-terminal-text flex items-center gap-2">
           <span className="text-terminal-cyan">&gt;</span>
-          ARBITRAGE
+          CROSS-PLATFORM ARBITRAGE
           <span className="cursor-blink" />
         </h1>
         <p className="text-sm text-terminal-dim mt-1">
-          Cross-platform arbitrage opportunities between Kalshi and Polymarket
+          Detect and execute arbitrage opportunities across Opinion.trade, Kalshi, and Polymarket
         </p>
       </div>
 
       {/* Platform Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {PLATFORMS.map((platform) => (
           <div
             key={platform.name}
-            className="bg-terminal-surface border border-terminal-border rounded-lg overflow-hidden"
+            className={`bg-terminal-surface border rounded-lg overflow-hidden ${
+              platform.status === "LIVE" 
+                ? "border-terminal-accent/50" 
+                : "border-terminal-border"
+            }`}
           >
             <div className="p-6 border-b border-terminal-border">
               <div className="flex items-center justify-between mb-2">
@@ -43,7 +54,11 @@ export default function ArbitragePage() {
                   {platform.name}
                 </h3>
                 <span
-                  className={`px-2 py-0.5 text-[10px] font-medium bg-${platform.color}/20 text-${platform.color} rounded`}
+                  className={`px-2 py-0.5 text-[10px] font-medium rounded ${
+                    platform.status === "LIVE"
+                      ? "bg-terminal-accent/20 text-terminal-accent"
+                      : `bg-${platform.color}/20 text-${platform.color}`
+                  }`}
                 >
                   {platform.status}
                 </span>
@@ -93,19 +108,19 @@ export default function ArbitragePage() {
             CROSS-PLATFORM ARBITRAGE
           </h2>
           <p className="text-sm text-terminal-dim max-w-lg mb-6">
-            Detect price discrepancies between Kalshi and Polymarket for the same
+            Detect price discrepancies between Opinion.trade, Kalshi, and Polymarket for the same
             events. Execute complementary trades to lock in risk-free profits.
           </p>
 
           <div className="flex flex-wrap justify-center gap-3 mb-8">
             <div className="px-4 py-2 bg-terminal-bg border border-terminal-border rounded text-xs text-terminal-dim">
-              <span className="text-terminal-purple">●</span> Polymarket prices
+              <span className="text-terminal-accent">●</span> Opinion.trade prices
             </div>
             <div className="px-4 py-2 bg-terminal-bg border border-terminal-border rounded text-xs text-terminal-dim">
               <span className="text-terminal-cyan">●</span> Kalshi prices
             </div>
             <div className="px-4 py-2 bg-terminal-bg border border-terminal-border rounded text-xs text-terminal-dim">
-              <span className="text-terminal-accent">●</span> Edge detection
+              <span className="text-terminal-purple">●</span> Polymarket prices
             </div>
           </div>
 
@@ -119,7 +134,7 @@ export default function ArbitragePage() {
               <div className="flex gap-3">
                 <span className="text-terminal-accent font-mono">01</span>
                 <span>
-                  Scan matching markets across Kalshi and Polymarket in real-time
+                  Scan matching markets across Opinion.trade, Kalshi, and Polymarket in real-time
                 </span>
               </div>
               <div className="flex gap-3">
@@ -144,7 +159,7 @@ export default function ArbitragePage() {
           </div>
 
           <div className="mt-8 px-4 py-2 bg-terminal-warn/10 border border-terminal-warn/30 rounded text-xs text-terminal-warn">
-            STATUS: IN DEVELOPMENT
+            STATUS: KALSHI & POLYMARKET INTEGRATION IN DEVELOPMENT
           </div>
         </div>
       </div>
