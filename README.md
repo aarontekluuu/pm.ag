@@ -156,3 +156,4 @@ Returns market data with edge calculations.
 ## License
 
 MIT
+
