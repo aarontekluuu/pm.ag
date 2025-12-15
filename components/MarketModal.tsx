@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from "react";
 import type { MarketEdge, TokenOrderbook } from "@/lib/types";
 import { getMarketPlatform, getPlatformInfo } from "@/lib/platforms";
-import { getOpinionSearchUrl } from "@/lib/links";
 import { sanitizeHtml } from "@/lib/validation";
 
 interface MarketModalProps {
@@ -381,35 +380,6 @@ export function MarketModal({ market, isStale, onClose }: MarketModalProps) {
                 Opens {getPlatformInfo(getMarketPlatform(market)).displayName} in new tab. Complete order on platform.
               </p>
             </div>
-          </div>
-
-          {/* Open on Opinion.trade Button */}
-          <div className="space-y-2">
-            <a
-              href={market.marketUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full py-4 bg-terminal-accent text-terminal-bg font-medium rounded-lg hover:bg-terminal-accent/90 transition-colors"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-              VIEW ON OPINION.TRADE
-            </a>
-            {/* Fallback search link if direct link doesn't work */}
-            <a
-              href={getOpinionSearchUrl(market.marketTitle)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full py-2 text-xs text-terminal-dim hover:text-terminal-text transition-colors underline"
-            >
-              Can't find market? Search for "{market.marketTitle.substring(0, 40)}..."
-            </a>
-            <p className="text-[10px] text-terminal-dim text-center">
-              Market ID: #{market.marketId}
-              {market.topicId && ` • Topic ID: ${market.topicId}`}
-              {!market.topicId && " • (No topicId - using marketId)"}
-            </p>
           </div>
         </div>
       </div>

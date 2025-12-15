@@ -8,10 +8,28 @@
 const OPINION_BASE_URL = "https://app.opinion.trade";
 
 /**
+ * Validate that topicId is a valid positive integer
+ */
+function isValidTopicId(topicId: number | string | undefined | null): boolean {
+  if (topicId === undefined || topicId === null) {
+    return false;
+  }
+  
+  const num = typeof topicId === 'string' ? Number(topicId) : topicId;
+  
+  // Must be a finite number, positive integer
+  if (!Number.isFinite(num) || num <= 0 || !Number.isInteger(num)) {
+    return false;
+  }
+  
+  return true;
+}
+
+/**
  * Generate Opinion.trade market URL from topicId
  * 
  * IMPORTANT: market_id from API is NOT the same as topicId in URLs.
- * Only use topicId if available from API. Otherwise, use search URL.
+ * Only use topicId if available from API and valid. Otherwise, use search URL.
  * 
  * @param marketId - Market ID from API (for reference only, not used in URL)
  * @param topicId - Topic ID from API (required for correct URL)
@@ -23,19 +41,46 @@ export function getOpinionMarketUrl(
   topicId?: number | string,
   marketTitle?: string
 ): string {
-  // Only use topicId if explicitly provided
+  // Validate topicId before using it
+  // Only use topicId if it's a valid positive integer
   // DO NOT use marketId as fallback - they are different!
-  if (topicId !== undefined && topicId !== null) {
-    return `${OPINION_BASE_URL}/detail?topicId=${topicId}&type=multi`;
+  if (isValidTopicId(topicId)) {
+    const validatedTopicId = typeof topicId === 'string' ? Number(topicId) : topicId;
+    const url = `${OPINION_BASE_URL}/detail?topicId=${validatedTopicId}&type=multi`;
+    
+    // Log in development if we're using topicId (server-side only)
+    if (typeof process !== 'undefined' && process.env?.NODE_ENV === "development") {
+      console.log(`[DEBUG] URL Generation - Using topicId:`, {
+        marketId,
+        topicId: validatedTopicId,
+        marketTitle: marketTitle?.substring(0, 50),
+        generatedUrl: url,
+      });
+    }
+    
+    return url;
   }
   
-  // If no topicId, use search URL as fallback
+  // If no valid topicId, use search URL as fallback
   // This is safer than using marketId which would point to wrong market
   if (marketTitle) {
-    return getOpinionSearchUrl(marketTitle);
+    const searchUrl = getOpinionSearchUrl(marketTitle);
+    if (typeof process !== 'undefined' && process.env?.NODE_ENV === "development") {
+      console.log(`[DEBUG] URL Generation - Using search fallback:`, {
+        marketId,
+        topicId: topicId || "none",
+        marketTitle: marketTitle.substring(0, 50),
+        generatedUrl: searchUrl,
+        reason: "No valid topicId found",
+      });
+    }
+    return searchUrl;
   }
   
   // Last resort: return base URL
+  if (typeof process !== 'undefined' && process.env?.NODE_ENV === "development") {
+    console.warn(`[WARN] URL Generation - No topicId or marketTitle for market ${marketId}, returning base URL`);
+  }
   return OPINION_BASE_URL;
 }
 

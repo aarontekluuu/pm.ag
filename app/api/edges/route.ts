@@ -96,18 +96,20 @@ async function fetchFromOpinionAPI(limit: number): Promise<EdgesResponse> {
         topic_id: (sampleMarket as any).topic_id,
         topicId: (sampleMarket as any).topicId,
         topic_id_number: (sampleMarket as any).topic_id_number,
+        topicIdNumber: (sampleMarket as any).topicIdNumber,
+        topic: (sampleMarket as any).topic,
         title: sampleMarket.title,
         allKeys: Object.keys(sampleMarket),
-        fullSample: JSON.stringify(sampleMarket, null, 2).substring(0, 500),
+        fullSample: JSON.stringify(sampleMarket, null, 2).substring(0, 1000),
       },
     });
   }
 
   // Convert to internal Market type
-  const markets: Market[] = opinionMarkets.map((m) => {
+  const markets: Market[] = opinionMarkets.map((m, index) => {
     // Try to extract topic_id from various possible field names
     // Check common variations: topic_id, topicId, topic_id_number, topicIdNumber
-    const topicId = 
+    const rawTopicId = 
       (m as any).topic_id ?? 
       (m as any).topicId ?? 
       (m as any).topic_id_number ??
@@ -116,9 +118,36 @@ async function fetchFromOpinionAPI(limit: number): Promise<EdgesResponse> {
       (m as any).topic?.topic_id ??
       undefined;
 
+    // Validate and convert to number
+    let topicId: number | undefined = undefined;
+    if (rawTopicId !== undefined && rawTopicId !== null) {
+      const parsed = Number(rawTopicId);
+      if (!Number.isNaN(parsed) && Number.isFinite(parsed) && parsed > 0) {
+        topicId = parsed;
+      }
+    }
+
+    // Log topicId extraction for first few markets in development
+    if (process.env.NODE_ENV === "development" && index < 3) {
+      console.log(`[DEBUG] Market ${index + 1} topicId extraction:`, {
+        market_id: m.market_id,
+        title: m.title.substring(0, 50),
+        rawTopicId,
+        extractedTopicId: topicId,
+        topicIdSource: 
+          (m as any).topic_id !== undefined ? 'topic_id' :
+          (m as any).topicId !== undefined ? 'topicId' :
+          (m as any).topic_id_number !== undefined ? 'topic_id_number' :
+          (m as any).topicIdNumber !== undefined ? 'topicIdNumber' :
+          (m as any).topic?.id !== undefined ? 'topic.id' :
+          (m as any).topic?.topic_id !== undefined ? 'topic.topic_id' :
+          'NOT_FOUND',
+      });
+    }
+
     return {
       marketId: m.market_id,
-      topicId: topicId !== undefined && topicId !== null ? Number(topicId) : undefined,
+      topicId,
       marketTitle: m.title,
       yesTokenId: m.yes_token_id,
       noTokenId: m.no_token_id,
@@ -126,6 +155,24 @@ async function fetchFromOpinionAPI(limit: number): Promise<EdgesResponse> {
       statusEnum: m.status,
     };
   });
+
+  // Log summary of topicId extraction
+  if (process.env.NODE_ENV === "development") {
+    const marketsWithTopicId = markets.filter(m => m.topicId !== undefined).length;
+    console.log(`[DEBUG] TopicId extraction summary: ${marketsWithTopicId}/${markets.length} markets have topicId`);
+    
+    // Log first 3 markets with their topicId (URL generation happens later in computeEdges)
+    if (markets.length > 0) {
+      markets.slice(0, 3).forEach((market, idx) => {
+        console.log(`[DEBUG] Market ${idx + 1} topicId details:`, {
+          marketId: market.marketId,
+          topicId: market.topicId,
+          title: market.marketTitle.substring(0, 50),
+          hasTopicId: market.topicId !== undefined,
+        });
+      });
+    }
+  }
 
   // Collect all token IDs
   const tokenIds = markets.flatMap((m) => [m.yesTokenId, m.noTokenId]);
@@ -141,6 +188,19 @@ async function fetchFromOpinionAPI(limit: number): Promise<EdgesResponse> {
       price: price.price,
       timestamp: price.timestamp,
     };
+  }
+
+  // Log sample price format for validation (only in development)
+  if (process.env.NODE_ENV === "development" && Object.keys(pricesByToken).length > 0) {
+    const sampleTokenId = Object.keys(pricesByToken)[0];
+    const samplePrice = pricesByToken[sampleTokenId];
+    const sampleOpinionPrice = opinionPrices[sampleTokenId];
+    console.log("[DEBUG] Price format from API:", {
+      tokenId: sampleTokenId,
+      rawPriceFromAPI: sampleOpinionPrice?.price,
+      priceType: typeof sampleOpinionPrice?.price,
+      priceValue: samplePrice.price,
+    });
   }
 
   // Compute edges
@@ -204,18 +264,46 @@ async function fetchEdgesWithCoalescing(
   inflightPromise = (async () => {
     try {
       let response: EdgesResponse;
+      let dataSource: "api" | "mock" = "api";
 
       if (isOpinionConfigured()) {
         response = await fetchFromOpinionAPI(limit);
+        dataSource = "api";
       } else {
-        // Fall back to mock data in development
+        // In production, fail if API not configured (don't use mock)
+        if (process.env.NODE_ENV === "production") {
+          const missingVars: string[] = [];
+          if (!process.env.OPINION_API_KEY) {
+            missingVars.push("OPINION_API_KEY");
+          }
+          if (!process.env.OPINION_OPENAPI_BASE_URL) {
+            missingVars.push("OPINION_OPENAPI_BASE_URL");
+          }
+          
+          const errorMessage = `Opinion API not configured. Missing environment variables: ${missingVars.join(", ")}`;
+          console.error(`[/api/edges] ${errorMessage}`);
+          throw new Error(errorMessage);
+        }
+        
+        // Only use mock in development
         if (process.env.NODE_ENV === "development") {
+          const missingVars: string[] = [];
+          if (!process.env.OPINION_API_KEY) {
+            missingVars.push("OPINION_API_KEY");
+          }
+          if (!process.env.OPINION_OPENAPI_BASE_URL) {
+            missingVars.push("OPINION_OPENAPI_BASE_URL");
+          }
           console.warn(
-            "[/api/edges] Opinion API not configured, using mock data"
+            `[/api/edges] Opinion API not configured, using mock data. Missing: ${missingVars.join(", ")}`
           );
         }
         response = await fetchFromMockAPI(limit);
+        dataSource = "mock";
       }
+
+      // Add data source to response metadata (we'll add header in route handler)
+      (response as any).__dataSource = dataSource;
 
       // Update cache
       cache = {
@@ -284,6 +372,9 @@ export async function GET(
         "X-RateLimit-Remaining",
         String(apiRateLimiter.getRemaining(clientId))
       );
+      // Add data source header (from cache)
+      const dataSource = (cache.data as any).__dataSource || (isOpinionConfigured() ? "api" : "mock");
+      response.headers.set("X-Data-Source", dataSource);
       return addSecurityHeaders(response);
     }
 
@@ -297,6 +388,9 @@ export async function GET(
       "X-RateLimit-Remaining",
       String(apiRateLimiter.getRemaining(clientId))
     );
+    // Add data source header
+    const dataSource = (response as any).__dataSource || (isOpinionConfigured() ? "api" : "mock");
+    jsonResponse.headers.set("X-Data-Source", dataSource);
     return addSecurityHeaders(jsonResponse);
   } catch (error) {
     // Sanitize error message (never log API keys)
