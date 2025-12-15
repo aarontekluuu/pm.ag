@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from "react";
 import type { MarketEdge, TokenOrderbook } from "@/lib/types";
-import { OrderButton } from "./OrderButton";
 import { getMarketPlatform, getPlatformInfo } from "@/lib/platforms";
 
 interface MarketModalProps {
@@ -352,10 +351,29 @@ export function MarketModal({ market, isStale, onClose }: MarketModalProps) {
               </h3>
             </div>
             <div className="p-4 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <OrderButton market={market} side="yes" />
-                <OrderButton market={market} side="no" />
-              </div>
+              <a
+                href={market.marketUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full py-4 bg-terminal-warn/10 border border-terminal-warn/30 text-terminal-warn font-medium rounded-lg hover:bg-terminal-warn/20 transition-colors"
+              >
+                <span className="w-2 h-2 rounded-full bg-terminal-accent" />
+                <span className="w-2 h-2 rounded-full bg-terminal-danger" />
+                <span>PLACE YES AND NO ORDER</span>
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                  />
+                </svg>
+              </a>
               <p className="text-[10px] text-terminal-dim text-center">
                 Opens {getPlatformInfo(getMarketPlatform(market)).displayName} in new tab. Complete order on platform.
               </p>
