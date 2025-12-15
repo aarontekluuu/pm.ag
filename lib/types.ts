@@ -5,6 +5,7 @@
 /** Raw market data from Opinion API */
 export interface Market {
   marketId: number;
+  topicId?: number; // Use for Opinion.trade URL generation if available
   marketTitle: string;
   yesTokenId: string;
   noTokenId: string;
@@ -28,6 +29,7 @@ export interface TokenPriceInfo {
 /** Computed market edge data */
 export interface MarketEdge {
   marketId: number;
+  topicId?: number; // Use for Opinion.trade URL generation
   marketTitle: string;
   marketUrl: string;
   volume24h: number;
@@ -76,3 +78,14 @@ export interface OrderbookResponse {
 
 /** Sort options for markets */
 export type SortOption = "volume" | "edge";
+
+/** Platform types */
+export type Platform = "opinion" | "kalshi" | "polymarket";
+
+/** Order placement data */
+export interface OrderPlacement {
+  marketId: number;
+  platform: Platform;
+  side: "yes" | "no";
+  url: string;
+}

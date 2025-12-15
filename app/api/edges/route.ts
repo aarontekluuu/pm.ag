@@ -74,6 +74,7 @@ async function fetchFromOpinionAPI(limit: number): Promise<EdgesResponse> {
   // Convert to internal Market type
   const markets: Market[] = opinionMarkets.map((m) => ({
     marketId: m.market_id,
+    topicId: m.topic_id, // Use topic_id if available for URL generation
     marketTitle: m.title,
     yesTokenId: m.yes_token_id,
     noTokenId: m.no_token_id,

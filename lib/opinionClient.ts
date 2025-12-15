@@ -14,6 +14,7 @@ import "server-only";
 
 export interface OpinionMarket {
   market_id: number;
+  topic_id?: number; // May exist in API response - use for URL generation
   title: string;
   yes_token_id: string;
   no_token_id: string;
@@ -248,4 +249,3 @@ export async function fetchTokenPrices(
 
   return priceMap;
 }
-

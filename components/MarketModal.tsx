@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import type { MarketEdge, TokenOrderbook } from "@/lib/types";
+import { OrderButton } from "./OrderButton";
+import { getMarketPlatform, getPlatformInfo } from "@/lib/platforms";
 
 interface MarketModalProps {
   market: MarketEdge | null;
@@ -341,6 +343,25 @@ export function MarketModal({ market, isStale, onClose }: MarketModalProps) {
             </div>
           </div>
 
+          {/* Place Order Section */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg overflow-hidden">
+            <div className="px-4 py-3 border-b border-terminal-border">
+              <h3 className="text-sm font-medium text-terminal-text flex items-center gap-2">
+                <span className="text-terminal-accent">&gt;</span>
+                PLACE ORDER
+              </h3>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <OrderButton market={market} side="yes" />
+                <OrderButton market={market} side="no" />
+              </div>
+              <p className="text-[10px] text-terminal-dim text-center">
+                Opens {getPlatformInfo(getMarketPlatform(market)).displayName} in new tab. Complete order on platform.
+              </p>
+            </div>
+          </div>
+
           {/* Open on Opinion.trade Button */}
           <div className="space-y-2">
             <a
@@ -352,7 +373,7 @@ export function MarketModal({ market, isStale, onClose }: MarketModalProps) {
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
-              OPEN ON OPINION.TRADE
+              VIEW ON OPINION.TRADE
             </a>
             <p className="text-[10px] text-terminal-dim text-center">
               Market ID: #{market.marketId} • Click ID badge above to copy

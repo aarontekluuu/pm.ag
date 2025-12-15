@@ -8,12 +8,39 @@
 const OPINION_BASE_URL = "https://app.opinion.trade";
 
 /**
- * Generate Opinion.trade market URL from marketId
+ * Generate Opinion.trade market URL from marketId or topicId
  * 
- * Format: https://app.opinion.trade/detail?topicId={marketId}&type=multi
+ * Format: https://app.opinion.trade/detail?topicId={id}&type=multi
+ * 
+ * Prefers topicId if available, falls back to marketId
  */
-export function getOpinionMarketUrl(marketId: number | string): string {
-  return `${OPINION_BASE_URL}/detail?topicId=${marketId}&type=multi`;
+export function getOpinionMarketUrl(
+  marketId: number | string,
+  topicId?: number | string
+): string {
+  // Use topicId if provided, otherwise use marketId
+  const id = topicId !== undefined ? topicId : marketId;
+  return `${OPINION_BASE_URL}/detail?topicId=${id}&type=multi`;
+}
+
+/**
+ * Generate Opinion.trade order placement URL
+ * 
+ * Redirects to market detail page. User can place order on platform.
+ * If Opinion.trade supports pre-filling order side via URL params, add them here.
+ */
+export function getOpinionOrderUrl(
+  marketId: number | string,
+  side: "yes" | "no",
+  topicId?: number | string
+): string {
+  // Start with market detail URL
+  const baseUrl = getOpinionMarketUrl(marketId, topicId);
+  
+  // Note: Opinion.trade may not support pre-filling order side via URL params
+  // If it does, add: &side=yes or &action=buy&side=yes
+  // For now, just link to market page and user clicks order there
+  return baseUrl;
 }
 
 /**
@@ -41,4 +68,19 @@ export const platformUrls = {
   
   // Polymarket uses slug-based URLs
   polymarket: (slug: string) => `https://polymarket.com/event/${slug}`,
+};
+
+/**
+ * Platform-specific order URL generators
+ */
+export const platformOrderUrls = {
+  opinion: getOpinionOrderUrl,
+  
+  // Future: Kalshi order URLs
+  kalshi: (eventTicker: string, side: "yes" | "no") => 
+    `https://kalshi.com/markets/${eventTicker}?side=${side}`,
+  
+  // Future: Polymarket order URLs
+  polymarket: (slug: string, side: "yes" | "no") => 
+    `https://polymarket.com/event/${slug}?side=${side}`,
 };
