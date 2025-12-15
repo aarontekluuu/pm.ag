@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useAppState } from "./context";
 import { MarketCard } from "@/components/MarketCard";
@@ -18,7 +19,18 @@ async function fetchEdges(limit: number): Promise<EdgesResponse> {
 }
 
 export default function MarketsPage() {
+  const router = useRouter();
   const { autoRefresh, setAutoRefresh } = useAppState();
+
+  // Check if first visit and redirect to welcome
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const hasVisited = localStorage.getItem("opinion-arb-visited");
+      if (!hasVisited) {
+        router.push("/welcome");
+      }
+    }
+  }, [router]);
 
   const [filters, setFilters] = useState<FilterState>({
     limit: 20,

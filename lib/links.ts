@@ -4,23 +4,16 @@
 
 /**
  * Opinion.trade base URL
- * Note: URL scheme may need adjustment based on actual Opinion.trade routing
  */
-const OPINION_BASE_URL = "https://opinion.trade";
+const OPINION_BASE_URL = "https://app.opinion.trade";
 
 /**
  * Generate Opinion.trade market URL from marketId
  * 
- * Attempts multiple URL schemes:
- * - /markets/{marketId} (most common)
- * - /market/{marketId} (singular)
- * - /?market={marketId} (query-based)
- * 
- * Returns the most likely URL, with fallback to base URL
+ * Format: https://app.opinion.trade/detail?topicId={marketId}&type=multi
  */
 export function getOpinionMarketUrl(marketId: number | string): string {
-  // Primary: /markets/{marketId} (plural, most common pattern)
-  return `${OPINION_BASE_URL}/markets/${marketId}`;
+  return `${OPINION_BASE_URL}/detail?topicId=${marketId}&type=multi`;
 }
 
 /**
@@ -49,4 +42,3 @@ export const platformUrls = {
   // Polymarket uses slug-based URLs
   polymarket: (slug: string) => `https://polymarket.com/event/${slug}`,
 };
-

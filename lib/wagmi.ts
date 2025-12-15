@@ -3,7 +3,7 @@ import { bsc, polygon } from "wagmi/chains";
 import { injected, walletConnect } from "wagmi/connectors";
 
 /**
- * Supported chains for Opinion Arb Terminal
+ * Supported chains for opinion.arb terminal
  * - BNB Chain (BSC): Opinion.trade
  * - Polygon: Polymarket
  */
@@ -26,7 +26,7 @@ export const wagmiConfig = createConfig({
           walletConnect({
             projectId: walletConnectProjectId,
             metadata: {
-              name: "Opinion Arb Terminal",
+              name: "opinion.arb terminal",
               description: "Real-time prediction market arbitrage dashboard",
               url: "https://arb-opionions.vercel.app",
               icons: ["https://arb-opionions.vercel.app/icon.svg"],
@@ -48,4 +48,3 @@ export const chainMeta: Record<number, { name: string; platform: string; color: 
   [bsc.id]: { name: "BNB Chain", platform: "Opinion.trade", color: "terminal-warn" },
   [polygon.id]: { name: "Polygon", platform: "Polymarket", color: "terminal-purple" },
 };
-

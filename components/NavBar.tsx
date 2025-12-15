@@ -24,7 +24,7 @@ export function NavBar() {
             </div>
             <div className="hidden sm:block">
               <h1 className="text-sm font-semibold tracking-wider text-terminal-text">
-                OPINION ARB
+                opinion.arb
               </h1>
               <p className="text-[10px] text-terminal-dim tracking-widest">
                 TERMINAL

@@ -1,5 +1,5 @@
 /**
- * Core types for the Opinion Arb Terminal
+ * Core types for the opinion.arb terminal
  */
 
 /** Raw market data from Opinion API */
@@ -8,14 +8,14 @@ export interface Market {
   marketTitle: string;
   yesTokenId: string;
   noTokenId: string;
-  volume24h: string;
+  volume24h: string; // String for safe parsing of large numbers
   statusEnum: string;
 }
 
 /** Token price snapshot */
 export interface TokenPrice {
   tokenId: string;
-  price: string;
+  price: string; // String for precision preservation
   timestamp: number;
 }
 

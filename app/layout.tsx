@@ -6,7 +6,7 @@ import { NavBar } from "@/components/NavBar";
 import { StatusIndicator } from "@/components/StatusIndicator";
 
 export const metadata: Metadata = {
-  title: "Opinion Arb Terminal",
+  title: "opinion.arb terminal",
   description: "Real-time prediction market arbitrage dashboard",
 };
 
@@ -25,7 +25,7 @@ export default function RootLayout({
               <main className="flex-1 p-4 md:p-6">{children}</main>
               <footer className="border-t border-terminal-border px-4 py-3 text-xs text-terminal-dim">
                 <div className="flex items-center justify-between max-w-7xl mx-auto">
-                  <span>OPINION ARB TERMINAL v0.1.0</span>
+                  <span>opinion.arb terminal v0.1.0</span>
                   <span className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-terminal-accent animate-pulse" />
                     SYSTEM ONLINE

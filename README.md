@@ -1,4 +1,4 @@
-# Opinion Arb Terminal
+# opinion.arb terminal
 
 A real-time prediction market arbitrage dashboard built with Next.js, TypeScript, and Tailwind CSS. Powered by the Opinion OpenAPI.
 
@@ -68,6 +68,7 @@ Open [http://localhost:3000](http://localhost:3000) to view the dashboard.
 | Route | Description |
 |-------|-------------|
 | `/` | Markets dashboard with live prices |
+| `/welcome` | Welcome screen (shown on first visit) |
 | `/arbitrage` | Cross-platform arbitrage (Kalshi + Polymarket) |
 | `/portfolio` | Portfolio tracking (mock data) |
 | `/api/edges` | API endpoint for market edge data |
@@ -95,6 +96,7 @@ Supported wallets:
 │   │   └── orderbook/route.ts  # Orderbook API
 │   ├── arbitrage/page.tsx      # Cross-platform arbitrage
 │   ├── portfolio/page.tsx      # Portfolio tracking
+│   ├── welcome/page.tsx        # Welcome screen
 │   ├── context.tsx             # App-wide state
 │   ├── page.tsx                # Markets dashboard
 │   ├── layout.tsx              # Root layout
@@ -137,7 +139,7 @@ Returns market data with edge calculations.
     {
       "marketId": 123,
       "marketTitle": "Will Bitcoin exceed $100K by end of 2025?",
-      "marketUrl": "https://opinion.trade/markets/123",
+      "marketUrl": "https://app.opinion.trade/detail?topicId=123&type=multi",
       "volume24h": 125000,
       "yes": { "tokenId": "token-yes", "price": 0.45 },
       "no": { "tokenId": "token-no", "price": 0.48 },
