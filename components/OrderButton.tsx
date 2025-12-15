@@ -26,7 +26,7 @@ export function OrderButton({
     let url: string;
 
     if (platform === "opinion") {
-      url = getOpinionOrderUrl(market.marketId, side, market.topicId);
+      url = getOpinionOrderUrl(market.marketId, side, market.topicId, market.marketTitle);
     } else {
       // Future: Kalshi/Polymarket URLs
       url = getOpinionBaseUrl(); // Fallback

@@ -62,7 +62,7 @@ export function computeEdges(
         marketId: market.marketId,
         topicId: market.topicId, // Preserve topicId for URL generation
         marketTitle: market.marketTitle,
-        marketUrl: getOpinionMarketUrl(market.marketId, market.topicId),
+        marketUrl: getOpinionMarketUrl(market.marketId, market.topicId, market.marketTitle),
         volume24h,
         yes: {
           tokenId: market.yesTokenId,

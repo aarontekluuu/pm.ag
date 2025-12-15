@@ -8,29 +8,35 @@
 const OPINION_BASE_URL = "https://app.opinion.trade";
 
 /**
- * Generate Opinion.trade market URL from marketId or topicId
+ * Generate Opinion.trade market URL from topicId
  * 
- * Tries multiple URL formats in order of preference:
- * 1. /detail?topicId={topicId}&type=multi (preferred)
- * 2. /detail?marketId={marketId}&type=multi (fallback)
- * 3. /market/{marketId} (alternative format)
+ * IMPORTANT: market_id from API is NOT the same as topicId in URLs.
+ * Only use topicId if available from API. Otherwise, use search URL.
  * 
- * Prefers topicId if available, falls back to marketId
+ * @param marketId - Market ID from API (for reference only, not used in URL)
+ * @param topicId - Topic ID from API (required for correct URL)
+ * @param marketTitle - Market title (used for search fallback)
+ * @returns Opinion.trade URL
  */
 export function getOpinionMarketUrl(
   marketId: number | string,
-  topicId?: number | string
+  topicId?: number | string,
+  marketTitle?: string
 ): string {
-  // Use topicId if provided, otherwise use marketId
-  const id = topicId !== undefined ? topicId : marketId;
-  
-  // Try the preferred format first (topicId with type=multi)
-  if (topicId !== undefined) {
+  // Only use topicId if explicitly provided
+  // DO NOT use marketId as fallback - they are different!
+  if (topicId !== undefined && topicId !== null) {
     return `${OPINION_BASE_URL}/detail?topicId=${topicId}&type=multi`;
   }
   
-  // Fallback: try marketId with type=multi
-  return `${OPINION_BASE_URL}/detail?marketId=${marketId}&type=multi`;
+  // If no topicId, use search URL as fallback
+  // This is safer than using marketId which would point to wrong market
+  if (marketTitle) {
+    return getOpinionSearchUrl(marketTitle);
+  }
+  
+  // Last resort: return base URL
+  return OPINION_BASE_URL;
 }
 
 /**
@@ -41,10 +47,11 @@ export function getOpinionMarketUrl(
 export function getOpinionOrderUrl(
   marketId: number | string,
   side: "yes" | "no",
-  topicId?: number | string
+  topicId?: number | string,
+  marketTitle?: string
 ): string {
   // Start with market detail URL
-  return getOpinionMarketUrl(marketId, topicId);
+  return getOpinionMarketUrl(marketId, topicId, marketTitle);
 }
 
 /**
@@ -88,3 +95,4 @@ export const platformOrderUrls = {
   polymarket: (slug: string, side: "yes" | "no") => 
     `https://polymarket.com/event/${slug}?side=${side}`,
 };
+
