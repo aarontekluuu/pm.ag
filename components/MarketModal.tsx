@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import type { MarketEdge, TokenOrderbook } from "@/lib/types";
 import { getMarketPlatform, getPlatformInfo } from "@/lib/platforms";
 import { getOpinionSearchUrl } from "@/lib/links";
+import { sanitizeHtml } from "@/lib/validation";
 
 interface MarketModalProps {
   market: MarketEdge | null;
@@ -178,9 +179,10 @@ export function MarketModal({ market, isStale, onClose }: MarketModalProps) {
                 </span>
               )}
             </div>
-            <h2 className="text-lg font-medium text-terminal-text leading-snug">
-              {market.marketTitle}
-            </h2>
+            <h2 
+              className="text-lg font-medium text-terminal-text leading-snug"
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(market.marketTitle) }}
+            />
           </div>
           <button
             onClick={onClose}

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { OrderbookResponse, ApiError } from "@/lib/types";
+import { validateTokenId } from "@/lib/validation";
+import { apiRateLimiter, getClientIdentifier } from "@/lib/rateLimit";
+import { getCorsHeaders, sanitizeError, addSecurityHeaders } from "@/lib/security";
 
 /**
  * Generate mock orderbook data for a token
@@ -50,31 +53,83 @@ export async function GET(
   request: NextRequest
 ): Promise<NextResponse<OrderbookResponse | ApiError>> {
   try {
+    // Rate limiting
+    const clientId = getClientIdentifier(request);
+    if (!apiRateLimiter.isAllowed(clientId)) {
+      const response = NextResponse.json(
+        {
+          error: "RATE_LIMIT_EXCEEDED",
+          message: "Too many requests. Please try again later.",
+        },
+        { status: 429, headers: getCorsHeaders() }
+      );
+      response.headers.set("X-RateLimit-Limit", "30");
+      response.headers.set("X-RateLimit-Remaining", "0");
+      response.headers.set(
+        "X-RateLimit-Reset",
+        String(Math.ceil(apiRateLimiter.getResetTime(clientId) / 1000))
+      );
+      return addSecurityHeaders(response);
+    }
+
     const { searchParams } = request.nextUrl;
     const tokenId = searchParams.get("tokenId");
 
+    // Validate tokenId parameter
     if (!tokenId) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: "MISSING_PARAM", message: "tokenId is required" },
-        { status: 400 }
+        { status: 400, headers: getCorsHeaders() }
       );
+      return addSecurityHeaders(response);
+    }
+
+    // Validate tokenId format to prevent injection attacks
+    if (!validateTokenId(tokenId)) {
+      const response = NextResponse.json(
+        {
+          error: "INVALID_PARAM",
+          message: "Invalid tokenId format",
+        },
+        { status: 400, headers: getCorsHeaders() }
+      );
+      return addSecurityHeaders(response);
     }
 
     // For MVP, return mock data
     // In production, fetch from Opinion API
     const response = generateMockOrderbook(tokenId);
-
-    return NextResponse.json(response);
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-    console.error("[/api/orderbook] Error:", errorMessage);
-
-    return NextResponse.json(
-      { error: "API_ERROR", message: "Failed to fetch orderbook data" },
-      { status: 500 }
+    const jsonResponse = NextResponse.json(response, {
+      headers: getCorsHeaders(),
+    });
+    jsonResponse.headers.set("X-RateLimit-Limit", "30");
+    jsonResponse.headers.set(
+      "X-RateLimit-Remaining",
+      String(apiRateLimiter.getRemaining(clientId))
     );
+    return addSecurityHeaders(jsonResponse);
+  } catch (error) {
+    const errorMessage = sanitizeError(error);
+    
+    if (process.env.NODE_ENV === "development") {
+      console.error("[/api/orderbook] Error:", errorMessage);
+    }
+
+    const errorResponse = NextResponse.json(
+      { error: "API_ERROR", message: "Failed to fetch orderbook data" },
+      { status: 500, headers: getCorsHeaders() }
+    );
+    return addSecurityHeaders(errorResponse);
   }
 }
 
-
+/**
+ * OPTIONS handler for CORS preflight
+ */
+export async function OPTIONS(): Promise<NextResponse> {
+  const response = new NextResponse(null, {
+    status: 204,
+    headers: getCorsHeaders(),
+  });
+  return addSecurityHeaders(response);
+}

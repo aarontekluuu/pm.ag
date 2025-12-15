@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { computeEdges } from "@/lib/edge";
 import { getMockMarkets, getMockLatestPrices } from "@/lib/mock";
 import type { EdgesResponse, ApiError, Market, TokenPrice } from "@/lib/types";
+import { apiRateLimiter, getClientIdentifier } from "@/lib/rateLimit";
+import { validateLimitParam } from "@/lib/validation";
+import { getCorsHeaders, sanitizeError, addSecurityHeaders } from "@/lib/security";
 
 // --- Configuration ---
 
@@ -9,6 +12,7 @@ const DEFAULT_LIMIT = 20;
 const MIN_LIMIT = 5;
 const MAX_LIMIT = 40;
 const CACHE_TTL_MS = 10_000; // 10 seconds
+const MAX_STALE_AGE_MS = 60_000; // 1 minute max stale
 
 // --- Cache State ---
 
@@ -29,6 +33,11 @@ function parseLimit(searchParams: URLSearchParams): number {
     return DEFAULT_LIMIT;
   }
 
+  // Validate length first to prevent resource exhaustion
+  if (!validateLimitParam(limitParam)) {
+    return DEFAULT_LIMIT;
+  }
+
   const parsed = parseInt(limitParam, 10);
 
   if (Number.isNaN(parsed)) {
@@ -41,6 +50,12 @@ function parseLimit(searchParams: URLSearchParams): number {
 
 function isCacheValid(): boolean {
   return cache !== null && Date.now() < cache.expiresAt;
+}
+
+function isStaleCacheValid(): boolean {
+  if (!cache) return false;
+  const age = Date.now() - cache.expiresAt;
+  return age < MAX_STALE_AGE_MS;
 }
 
 /**
@@ -184,9 +199,11 @@ async function fetchEdgesWithCoalescing(
         response = await fetchFromOpinionAPI(limit);
       } else {
         // Fall back to mock data in development
-        console.warn(
-          "[/api/edges] Opinion API not configured, using mock data"
-        );
+        if (process.env.NODE_ENV === "development") {
+          console.warn(
+            "[/api/edges] Opinion API not configured, using mock data"
+          );
+        }
         response = await fetchFromMockAPI(limit);
       }
 
@@ -225,31 +242,71 @@ export async function GET(
   request: NextRequest
 ): Promise<NextResponse<EdgesResponse | ApiError>> {
   try {
+    // Rate limiting
+    const clientId = getClientIdentifier(request);
+    if (!apiRateLimiter.isAllowed(clientId)) {
+      const response = NextResponse.json(
+        {
+          error: "RATE_LIMIT_EXCEEDED",
+          message: "Too many requests. Please try again later.",
+        },
+        { status: 429, headers: getCorsHeaders() }
+      );
+      response.headers.set("X-RateLimit-Limit", "30");
+      response.headers.set("X-RateLimit-Remaining", "0");
+      response.headers.set(
+        "X-RateLimit-Reset",
+        String(Math.ceil(apiRateLimiter.getResetTime(clientId) / 1000))
+      );
+      return addSecurityHeaders(response);
+    }
+
     const { searchParams } = request.nextUrl;
     const limit = parseLimit(searchParams);
 
     // Return cached data if valid
     if (isCacheValid() && cache) {
-      return NextResponse.json(cache.data);
+      const response = NextResponse.json(cache.data, {
+        headers: getCorsHeaders(),
+      });
+      response.headers.set("X-RateLimit-Limit", "30");
+      response.headers.set(
+        "X-RateLimit-Remaining",
+        String(apiRateLimiter.getRemaining(clientId))
+      );
+      return addSecurityHeaders(response);
     }
 
     // Fetch fresh data
     const response = await fetchEdgesWithCoalescing(limit);
-    return NextResponse.json(response);
+    const jsonResponse = NextResponse.json(response, {
+      headers: getCorsHeaders(),
+    });
+    jsonResponse.headers.set("X-RateLimit-Limit", "30");
+    jsonResponse.headers.set(
+      "X-RateLimit-Remaining",
+      String(apiRateLimiter.getRemaining(clientId))
+    );
+    return addSecurityHeaders(jsonResponse);
   } catch (error) {
-    // Log error (but never log API keys)
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-    console.error("[/api/edges] Error fetching data:", errorMessage);
+    // Sanitize error message (never log API keys)
+    const errorMessage = sanitizeError(error);
+    
+    if (process.env.NODE_ENV === "development") {
+      console.error("[/api/edges] Error fetching data:", errorMessage);
+    }
 
-    // Return stale cached data if available
-    if (cache) {
+    // Return stale cached data if available and not too old
+    if (isStaleCacheValid() && cache) {
       const staleResponse: EdgesResponse = {
         ...cache.data,
         stale: true,
         error: "Opinion API temporarily unavailable",
       };
-      return NextResponse.json(staleResponse);
+      const response = NextResponse.json(staleResponse, {
+        headers: getCorsHeaders(),
+      });
+      return addSecurityHeaders(response);
     }
 
     // No cache available, return error
@@ -258,6 +315,21 @@ export async function GET(
       message: "Failed to fetch market data. Please try again later.",
     };
 
-    return NextResponse.json(apiError, { status: 503 });
+    const errorResponse = NextResponse.json(apiError, {
+      status: 503,
+      headers: getCorsHeaders(),
+    });
+    return addSecurityHeaders(errorResponse);
   }
+}
+
+/**
+ * OPTIONS handler for CORS preflight
+ */
+export async function OPTIONS(): Promise<NextResponse> {
+  const response = new NextResponse(null, {
+    status: 204,
+    headers: getCorsHeaders(),
+  });
+  return addSecurityHeaders(response);
 }

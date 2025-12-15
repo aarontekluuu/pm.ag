@@ -1,6 +1,7 @@
 "use client";
 
 import type { MarketEdge } from "@/lib/types";
+import { sanitizeHtml } from "@/lib/validation";
 
 interface MarketCardProps {
   market: MarketEdge;
@@ -62,9 +63,10 @@ export function MarketCard({ market, isStale = false, onClick }: MarketCardProps
       {/* Header */}
       <div className="p-4 pb-3">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="text-sm font-medium text-terminal-text leading-snug line-clamp-2 group-hover:text-white transition-colors pr-16">
-            {market.marketTitle}
-          </h3>
+          <h3 
+            className="text-sm font-medium text-terminal-text leading-snug line-clamp-2 group-hover:text-white transition-colors pr-16"
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(market.marketTitle) }}
+          />
         </div>
         <div className="flex items-center gap-2 mt-2">
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-terminal-border text-terminal-dim uppercase tracking-wider">
