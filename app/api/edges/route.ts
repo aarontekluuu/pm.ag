@@ -76,12 +76,32 @@ async function fetchFromOpinionAPI(limit: number): Promise<EdgesResponse> {
 
   const opinionMarkets = await fetchMarkets(limit);
 
+  // Log markets fetched from API
+  console.log("[MARKETS] Fetched from Opinion API:", {
+    count: opinionMarkets.length,
+    limit,
+    hasMarkets: opinionMarkets.length > 0,
+  });
+
   if (opinionMarkets.length === 0) {
+    console.warn("[MARKETS] No markets returned from Opinion API");
     return {
       updatedAt: Date.now(),
       stale: false,
       list: [],
     };
+  }
+
+  // Log sample market structure
+  if (opinionMarkets.length > 0) {
+    console.log("[MARKETS] Sample market structure:", {
+      market_id: opinionMarkets[0].market_id,
+      title: opinionMarkets[0].title?.substring(0, 50),
+      yes_token_id: opinionMarkets[0].yes_token_id,
+      no_token_id: opinionMarkets[0].no_token_id,
+      volume_24h: opinionMarkets[0].volume_24h,
+      status: opinionMarkets[0].status,
+    });
   }
 
   // CRITICAL: Log FULL API response structure to identify topicId field
@@ -256,9 +276,33 @@ async function fetchFromOpinionAPI(limit: number): Promise<EdgesResponse> {
 
   // Collect all token IDs
   const tokenIds = markets.flatMap((m) => [m.yesTokenId, m.noTokenId]);
+  const uniqueTokenIds = [...new Set(tokenIds)];
+  
+  console.log("[PRICES] Token IDs to fetch:", {
+    totalTokenIds: tokenIds.length,
+    uniqueTokenIds: uniqueTokenIds.length,
+    expectedPrices: uniqueTokenIds.length,
+    sampleTokenIds: uniqueTokenIds.slice(0, 5),
+  });
 
   // Fetch prices
-  const opinionPrices = await fetchTokenPrices(tokenIds);
+  const opinionPrices = await fetchTokenPrices(uniqueTokenIds);
+
+  console.log("[PRICES] Fetched from Opinion API:", {
+    pricesFetched: Object.keys(opinionPrices).length,
+    expectedPrices: uniqueTokenIds.length,
+    missingPrices: uniqueTokenIds.length - Object.keys(opinionPrices).length,
+    successRate: `${((Object.keys(opinionPrices).length / uniqueTokenIds.length) * 100).toFixed(1)}%`,
+  });
+
+  // Log missing token IDs
+  const missingTokenIds = uniqueTokenIds.filter(id => !opinionPrices[id]);
+  if (missingTokenIds.length > 0) {
+    console.warn("[PRICES] Missing prices for token IDs:", {
+      count: missingTokenIds.length,
+      sampleMissingIds: missingTokenIds.slice(0, 10),
+    });
+  }
 
   // Convert to internal TokenPrice type
   const pricesByToken: Record<string, TokenPrice> = {};
@@ -268,6 +312,16 @@ async function fetchFromOpinionAPI(limit: number): Promise<EdgesResponse> {
       price: price.price,
       timestamp: price.timestamp,
     };
+  }
+
+  // Log price statistics
+  if (Object.keys(pricesByToken).length > 0) {
+    const samplePrices = Object.values(pricesByToken).slice(0, 3);
+    console.log("[PRICES] Sample prices:", samplePrices.map(p => ({
+      tokenId: p.tokenId,
+      price: p.price,
+      priceType: typeof p.price,
+    })));
   }
 
   // Log sample price format for validation (only in development)
@@ -283,8 +337,34 @@ async function fetchFromOpinionAPI(limit: number): Promise<EdgesResponse> {
     });
   }
 
+  // Log markets before edge computation
+  console.log("[EDGES] Markets before computation:", {
+    totalMarkets: markets.length,
+    marketsWithYesPrice: markets.filter(m => pricesByToken[m.yesTokenId]).length,
+    marketsWithNoPrice: markets.filter(m => pricesByToken[m.noTokenId]).length,
+    marketsWithBothPrices: markets.filter(m => pricesByToken[m.yesTokenId] && pricesByToken[m.noTokenId]).length,
+    marketsMissingPrices: markets.filter(m => !pricesByToken[m.yesTokenId] || !pricesByToken[m.noTokenId]).length,
+  });
+
   // Compute edges
   const edges = computeEdges(markets, pricesByToken);
+
+  // Log edges after computation
+  console.log("[EDGES] After computation:", {
+    totalEdges: edges.length,
+    edgesWithArbitrage: edges.filter(e => e.edge > 0).length,
+    maxEdge: edges.length > 0 ? Math.max(...edges.map(e => e.edge)) : 0,
+    avgEdge: edges.length > 0 ? (edges.reduce((sum, e) => sum + e.edge, 0) / edges.length).toFixed(4) : 0,
+    marketsLost: markets.length - edges.length,
+  });
+
+  if (edges.length === 0 && markets.length > 0) {
+    console.error("[EDGES] WARNING: No edges computed despite having markets!", {
+      marketsCount: markets.length,
+      pricesCount: Object.keys(pricesByToken).length,
+      marketsWithPrices: markets.filter(m => pricesByToken[m.yesTokenId] && pricesByToken[m.noTokenId]).length,
+    });
+  }
 
   return {
     updatedAt: Date.now(),

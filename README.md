@@ -47,6 +47,78 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) to view the dashboard.
 
+## Smart Contract Development (v2)
+
+### Prerequisites
+
+- Node.js 18+
+- Hardhat installed (`npm install --save-dev hardhat`)
+- BSC Testnet BNB for gas (get from [faucet](https://testnet.bnbchain.org/faucet-smart))
+
+### Environment Variables for Contracts
+
+Add to `.env.local`:
+
+```bash
+# BSC Testnet
+BSC_TESTNET_RPC_URL=https://data-seed-prebsc-1-s1.binance.org:8545
+PRIVATE_KEY=0x... # Your deployer private key (NEVER commit this!)
+
+# Optional: Fee configuration
+FEE_WALLET_ADDRESS=0x... # Address to receive fees (defaults to deployer)
+FEE_BASIS_POINTS=50 # Fee percentage in basis points (50 = 0.5%)
+
+# Optional: BSCScan API key for contract verification
+BSCSCAN_API_KEY=...
+```
+
+### Compile Contracts
+
+```bash
+npx hardhat compile
+```
+
+### Run Tests
+
+```bash
+npx hardhat test
+```
+
+### Deploy to BSC Testnet
+
+```bash
+npx hardhat run scripts/deploy.ts --network bscTestnet
+```
+
+After deployment, the script will output contract addresses. Add these to your `.env.local`:
+
+```bash
+MOCK_OPINION_EXCHANGE_ADDRESS=0x...
+TRADE_ROUTER_ADDRESS=0x...
+FEE_TRACKER_ADDRESS=0x...
+```
+
+Deployment info is also saved to `deployments/bscTestnet.json`.
+
+### Contract Architecture
+
+- **MockOpinionExchange**: Mock contract for testing (replaced with real Opinion contract in production)
+- **TradeRouter**: Main contract that routes trades and collects fees
+- **FeeTracker**: Tracks fees per user and total fees collected
+
+### Testing Locally
+
+```bash
+# Run all tests
+npx hardhat test
+
+# Run specific test file
+npx hardhat test test/TradeRouter.test.ts
+
+# Run with gas reporting
+REPORT_GAS=true npx hardhat test
+```
+
 ## Deploy to Vercel
 
 ### Quick Deploy

@@ -1,258 +1,216 @@
 "use client";
 
-const MOCK_TRADES = [
-  {
-    id: 1,
-    market: "Will Bitcoin exceed $100K by end of 2025?",
-    platform: "Opinion.trade",
-    side: "YES",
-    price: 0.62,
-    quantity: 100,
-    value: 62.0,
-    pnl: 8.50,
-    pnlPercent: 13.7,
-    timestamp: "2025-01-14T10:30:00Z",
-  },
-  {
-    id: 2,
-    market: "US Federal Reserve rate cut in Q1 2025?",
-    platform: "Opinion.trade",
-    side: "NO",
-    price: 0.71,
-    quantity: 50,
-    value: 35.5,
-    pnl: -2.25,
-    pnlPercent: -6.3,
-    timestamp: "2025-01-13T15:45:00Z",
-  },
-  {
-    id: 3,
-    market: "SpaceX Starship successful orbital flight by March?",
-    platform: "Opinion.trade",
-    side: "YES",
-    price: 0.45,
-    quantity: 200,
-    value: 90.0,
-    pnl: 22.00,
-    pnlPercent: 24.4,
-    timestamp: "2025-01-12T09:15:00Z",
-  },
-  {
-    id: 4,
-    market: "Apple announces AR glasses at WWDC 2025?",
-    platform: "Opinion.trade",
-    side: "NO",
-    price: 0.82,
-    quantity: 75,
-    value: 61.5,
-    pnl: 5.25,
-    pnlPercent: 8.5,
-    timestamp: "2025-01-11T14:20:00Z",
-  },
-  {
-    id: 5,
-    market: "ChatGPT-5 release before July 2025?",
-    platform: "Opinion.trade",
-    side: "YES",
-    price: 0.38,
-    quantity: 150,
-    value: 57.0,
-    pnl: -4.50,
-    pnlPercent: -7.9,
-    timestamp: "2025-01-10T11:00:00Z",
-  },
-];
+import { useAccount } from "wagmi";
+import { useQuery } from "@tanstack/react-query";
+import { ConnectWallet } from "@/components/ConnectWallet";
 
-const PORTFOLIO_VALUE = 306.0;
-const TOTAL_PNL = 29.0;
-const TOTAL_PNL_PERCENT = 9.5;
+async function fetchUserTrades(userAddress: string) {
+  const res = await fetch(`/api/portfolio?userAddress=${userAddress}`);
+  if (!res.ok) {
+    throw new Error("Failed to fetch portfolio");
+  }
+  return res.json();
+}
 
 export default function PortfolioPage() {
-  const formatDate = (ts: string) => {
-    const date = new Date(ts);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+  const { address, isConnected } = useAccount();
+  
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["portfolio", address],
+    queryFn: () => (address ? fetchUserTrades(address) : null),
+    enabled: !!address && isConnected,
+  });
+
+  if (!isConnected || !address) {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="mb-6">
+          <h1 className="text-xl font-semibold text-terminal-text flex items-center gap-2">
+            <span className="text-terminal-purple">&gt;</span>
+            PORTFOLIO
+          </h1>
+          <p className="text-sm text-terminal-dim mt-1">
+            View your trading history and portfolio value
+          </p>
+        </div>
+
+        <div className="bg-terminal-surface border border-terminal-border rounded-lg p-12 text-center">
+          <div className="text-terminal-dim mb-6">
+            <svg
+              className="w-16 h-16 mx-auto mb-4 opacity-50"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+              />
+            </svg>
+            <div className="text-lg font-medium text-terminal-text mb-2">
+              Connect Your Wallet
+            </div>
+            <div className="text-sm text-terminal-dim max-w-md mx-auto">
+              Connect your wallet to view your trading history, portfolio value, and performance metrics.
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <ConnectWallet />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="flex items-center justify-center py-12">
+          <svg className="w-8 h-8 animate-spin text-terminal-accent" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="bg-terminal-danger/10 border border-terminal-danger/30 rounded-lg p-6 text-center">
+          <div className="text-terminal-danger font-medium mb-2">ERROR LOADING PORTFOLIO</div>
+          <div className="text-sm text-terminal-dim">
+            {error instanceof Error ? error.message : "Failed to load portfolio data"}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const trades = data?.trades || [];
+  const portfolioValue = data?.portfolioValue || "0";
+  const totalFees = data?.totalFees || "0";
+  const totalTrades = data?.totalTrades || 0;
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-4xl mx-auto p-6">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-terminal-text flex items-center gap-2">
           <span className="text-terminal-purple">&gt;</span>
           PORTFOLIO
-          <span className="cursor-blink" />
         </h1>
         <p className="text-sm text-terminal-dim mt-1">
-          Track your positions and performance across all platforms
+          Your trading history and portfolio performance
         </p>
       </div>
 
-      {/* Portfolio Value Card */}
-      <div className="bg-terminal-surface border border-terminal-accent/30 rounded-lg p-8 mb-8">
-        <div className="flex flex-col items-center justify-center text-center">
+      {/* Portfolio Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="bg-terminal-surface border border-terminal-border rounded-lg p-4">
           <div className="text-[10px] text-terminal-dim tracking-wider uppercase mb-2">
-            TOTAL PORTFOLIO VALUE
+            Portfolio Value
           </div>
-          <div className="text-5xl font-bold text-terminal-text mb-4">
-            ${PORTFOLIO_VALUE.toFixed(2)}
-          </div>
-          <div
-            className={`flex items-center gap-2 px-4 py-2 rounded-full ${
-              TOTAL_PNL >= 0
-                ? "bg-terminal-accent/10 text-terminal-accent"
-                : "bg-terminal-danger/10 text-terminal-danger"
-            }`}
-          >
-            <span className="text-lg font-semibold">
-              {TOTAL_PNL >= 0 ? "+" : ""}${TOTAL_PNL.toFixed(2)}
-            </span>
-            <span className="text-sm">
-              ({TOTAL_PNL_PERCENT >= 0 ? "+" : ""}{TOTAL_PNL_PERCENT.toFixed(1)}%)
-            </span>
+          <div className="text-2xl font-bold text-terminal-text">
+            ${(parseFloat(portfolioValue) / 1e18).toFixed(2)}
           </div>
         </div>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-3 gap-4 mt-8 pt-6 border-t border-terminal-border">
-          <div className="text-center">
-            <div className="text-[10px] text-terminal-dim tracking-wider uppercase mb-1">
-              POSITIONS
-            </div>
-            <div className="text-2xl font-semibold text-terminal-text">
-              {MOCK_TRADES.length}
-            </div>
+        <div className="bg-terminal-surface border border-terminal-border rounded-lg p-4">
+          <div className="text-[10px] text-terminal-dim tracking-wider uppercase mb-2">
+            Total Trades
           </div>
-          <div className="text-center">
-            <div className="text-[10px] text-terminal-dim tracking-wider uppercase mb-1">
-              WINNING
-            </div>
-            <div className="text-2xl font-semibold text-terminal-accent">
-              {MOCK_TRADES.filter((t) => t.pnl > 0).length}
-            </div>
+          <div className="text-2xl font-bold text-terminal-text">{totalTrades}</div>
+        </div>
+        <div className="bg-terminal-surface border border-terminal-border rounded-lg p-4">
+          <div className="text-[10px] text-terminal-dim tracking-wider uppercase mb-2">
+            Total Fees Paid
           </div>
-          <div className="text-center">
-            <div className="text-[10px] text-terminal-dim tracking-wider uppercase mb-1">
-              LOSING
-            </div>
-            <div className="text-2xl font-semibold text-terminal-danger">
-              {MOCK_TRADES.filter((t) => t.pnl < 0).length}
-            </div>
+          <div className="text-2xl font-bold text-terminal-text">
+            ${(parseFloat(totalFees) / 1e18).toFixed(2)}
           </div>
         </div>
       </div>
 
-      {/* Trades List */}
+      {/* Trade History */}
       <div className="bg-terminal-surface border border-terminal-border rounded-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-terminal-border">
+        <div className="px-4 py-3 border-b border-terminal-border">
           <h2 className="text-sm font-medium text-terminal-text flex items-center gap-2">
             <span className="text-terminal-accent">&gt;</span>
-            OPEN POSITIONS
+            TRADE HISTORY
           </h2>
         </div>
 
-        {/* Table Header */}
-        <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 bg-terminal-bg/50 text-[10px] text-terminal-dim tracking-wider uppercase border-b border-terminal-border">
-          <div className="col-span-4">Market</div>
-          <div className="col-span-1 text-center">Side</div>
-          <div className="col-span-1 text-right">Price</div>
-          <div className="col-span-1 text-right">Qty</div>
-          <div className="col-span-2 text-right">Value</div>
-          <div className="col-span-2 text-right">P&L</div>
-          <div className="col-span-1 text-right">Date</div>
-        </div>
-
-        {/* Trades */}
-        <div className="divide-y divide-terminal-border">
-          {MOCK_TRADES.map((trade) => (
-            <div
-              key={trade.id}
-              className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-4 px-6 py-4 hover:bg-terminal-border/30 transition-colors"
-            >
-              {/* Market */}
-              <div className="col-span-4">
-                <div className="text-sm text-terminal-text line-clamp-1">
-                  {trade.market}
-                </div>
-                <div className="text-[10px] text-terminal-dim mt-0.5">
-                  {trade.platform}
-                </div>
-              </div>
-
-              {/* Side */}
-              <div className="col-span-1 flex items-center justify-center">
-                <span
-                  className={`px-2 py-0.5 text-[10px] font-medium rounded ${
-                    trade.side === "YES"
-                      ? "bg-terminal-accent/20 text-terminal-accent"
-                      : "bg-terminal-danger/20 text-terminal-danger"
-                  }`}
-                >
-                  {trade.side}
-                </span>
-              </div>
-
-              {/* Price */}
-              <div className="col-span-1 text-right text-sm text-terminal-text">
-                {(trade.price * 100).toFixed(0)}¢
-              </div>
-
-              {/* Quantity */}
-              <div className="col-span-1 text-right text-sm text-terminal-dim">
-                {trade.quantity}
-              </div>
-
-              {/* Value */}
-              <div className="col-span-2 text-right text-sm text-terminal-text">
-                ${trade.value.toFixed(2)}
-              </div>
-
-              {/* P&L */}
-              <div className="col-span-2 text-right">
-                <div
-                  className={`text-sm font-medium ${
-                    trade.pnl >= 0 ? "text-terminal-accent" : "text-terminal-danger"
-                  }`}
-                >
-                  {trade.pnl >= 0 ? "+" : ""}${trade.pnl.toFixed(2)}
-                </div>
-                <div
-                  className={`text-[10px] ${
-                    trade.pnl >= 0 ? "text-terminal-accent/70" : "text-terminal-danger/70"
-                  }`}
-                >
-                  {trade.pnlPercent >= 0 ? "+" : ""}{trade.pnlPercent.toFixed(1)}%
-                </div>
-              </div>
-
-              {/* Date */}
-              <div className="col-span-1 text-right text-[10px] text-terminal-dim">
-                {formatDate(trade.timestamp)}
-              </div>
+        {trades.length === 0 ? (
+          <div className="p-12 text-center text-terminal-dim">
+            <div className="mb-2">No trades yet</div>
+            <div className="text-xs">
+              Start trading to see your history here. Trades will appear once smart contracts are deployed and active.
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="bg-terminal-bg border-b border-terminal-border">
+                <tr>
+                  <th className="px-4 py-3 text-left text-terminal-dim font-medium">Market</th>
+                  <th className="px-4 py-3 text-left text-terminal-dim font-medium">Side</th>
+                  <th className="px-4 py-3 text-right text-terminal-dim font-medium">Amount</th>
+                  <th className="px-4 py-3 text-right text-terminal-dim font-medium">Fee</th>
+                  <th className="px-4 py-3 text-left text-terminal-dim font-medium">Date</th>
+                  <th className="px-4 py-3 text-left text-terminal-dim font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {trades.map((trade: any) => (
+                  <tr key={trade.id} className="border-b border-terminal-border hover:bg-terminal-bg/50">
+                    <td className="px-4 py-3 text-terminal-text">
+                      <div className="max-w-xs truncate">{trade.marketTitle || `Market #${trade.marketId}`}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`px-2 py-1 rounded ${
+                          trade.side === "yes"
+                            ? "bg-terminal-accent/20 text-terminal-accent"
+                            : "bg-terminal-danger/20 text-terminal-danger"
+                        }`}
+                      >
+                        {trade.side.toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right text-terminal-text font-mono">
+                      ${(parseFloat(trade.amount) / 1e18).toFixed(2)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-terminal-dim font-mono">
+                      ${(parseFloat(trade.fee) / 1e18).toFixed(2)}
+                    </td>
+                    <td className="px-4 py-3 text-terminal-dim">
+                      {new Date(trade.timestamp).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="px-2 py-1 rounded bg-terminal-accent/20 text-terminal-accent text-[10px]">
+                        EXECUTED
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      {/* Mock Data Notice */}
-      <div className="mt-6 text-center">
-        <span className="inline-flex items-center gap-2 px-4 py-2 bg-terminal-warn/10 border border-terminal-warn/30 rounded text-xs text-terminal-warn">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          DISPLAYING MOCK DATA — CONNECT WALLET TO VIEW REAL POSITIONS
-        </span>
+      {/* Info */}
+      <div className="mt-6 text-center text-xs text-terminal-dim">
+        <div className="mb-2">
+          Portfolio data is synced from on-chain smart contracts.
+        </div>
+        <div>
+          Note: Smart contracts are not yet deployed. This page will show real data once v2 is live.
+        </div>
       </div>
     </div>
   );
 }
-

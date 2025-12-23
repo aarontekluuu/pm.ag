@@ -14,10 +14,18 @@ import "server-only";
 
 export interface OpinionMarket {
   market_id: number;
-  topic_id?: number; // May exist in API response - use for URL generation
-  topicId?: number; // Alternative field name
-  topic_id_number?: number; // Another possible field name
-  topic?: { id?: number; topic_id?: number }; // Nested topic object
+  // TopicId can appear in various formats - we'll try all of them
+  topic_id?: number | string; // Primary field name (may be string or number)
+  topicId?: number | string; // CamelCase variant
+  topic_id_number?: number | string; // Alternative naming
+  topicIdNumber?: number | string; // CamelCase variant
+  topic_id_string?: string; // String variant
+  topicIdString?: string; // CamelCase string variant
+  topic?: { 
+    id?: number | string; 
+    topic_id?: number | string;
+    topic_id_number?: number | string;
+  }; // Nested topic object
   title: string;
   yes_token_id: string;
   no_token_id: string;
@@ -215,9 +223,18 @@ export async function fetchMarkets(
   const data: OpinionMarketsResponse = await response.json();
   const markets = data.data || [];
   
-  // Log API response details in development for debugging
-  if (process.env.NODE_ENV === "development" && markets.length > 0) {
+  // Log API response details (always log for topicId debugging)
+  if (markets.length > 0) {
     console.log(`[Opinion API] Fetched ${markets.length} markets from ${url.toString()}`);
+    
+    // Log response metadata if available
+    const responseData = data as any;
+    if (responseData.total !== undefined) {
+      console.log(`[Opinion API] Total markets available: ${responseData.total}`);
+    }
+    if (responseData.page !== undefined) {
+      console.log(`[Opinion API] Page: ${responseData.page}, Limit: ${responseData.limit}`);
+    }
   }
   
   return markets;
@@ -257,19 +274,86 @@ export async function fetchTokenPrice(
 export async function fetchTokenPrices(
   tokenIds: string[]
 ): Promise<Record<string, OpinionTokenPrice>> {
-  const results = await Promise.all(
-    tokenIds.map(async (tokenId) => {
-      const price = await fetchTokenPrice(tokenId);
-      return { tokenId, price };
+  if (tokenIds.length === 0) {
+    console.warn("[PRICES] No token IDs provided to fetchTokenPrices");
+    return {};
+  }
+
+  const uniqueTokenIds = [...new Set(tokenIds)];
+  console.log(`[PRICES] Fetching prices for ${uniqueTokenIds.length} unique tokens (${tokenIds.length} total)`);
+
+  const results = await Promise.allSettled(
+    uniqueTokenIds.map(async (tokenId) => {
+      try {
+        const price = await fetchTokenPrice(tokenId);
+        return { tokenId, price, success: true };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.warn(`[PRICES] Failed to fetch price for token ${tokenId}:`, errorMessage);
+        return { tokenId, price: null, success: false, error: errorMessage };
+      }
     })
   );
 
   const priceMap: Record<string, OpinionTokenPrice> = {};
-  for (const { tokenId, price } of results) {
-    if (price) {
-      priceMap[tokenId] = price;
+  let successCount = 0;
+  let failureCount = 0;
+
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      const { tokenId, price } = result.value;
+      if (price) {
+        priceMap[tokenId] = price;
+        successCount++;
+      } else {
+        failureCount++;
+      }
+    } else {
+      failureCount++;
+      console.warn(`[PRICES] Promise rejected for token:`, result.reason);
     }
   }
 
+  console.log(`[PRICES] Price fetch summary:`, {
+    requested: uniqueTokenIds.length,
+    successful: successCount,
+    failed: failureCount,
+    successRate: `${((successCount / uniqueTokenIds.length) * 100).toFixed(1)}%`,
+  });
+
   return priceMap;
+}
+
+/**
+ * Fetch detailed market information by market ID
+ * This can be used as a fallback to get topicId if it's missing from the list endpoint
+ * 
+ * @param marketId - Market ID to fetch details for
+ * @returns Market details or null if not found
+ */
+export async function fetchMarketDetails(
+  marketId: number
+): Promise<OpinionMarket | null> {
+  const { apiKey, baseUrl } = getConfig();
+
+  const url = new URL(`${baseUrl}/market/${marketId}`);
+
+  try {
+    const response = await fetchWithRetry(url.toString(), {
+      method: "GET",
+      headers: {
+        apikey: apiKey,
+        Accept: "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data: { data?: OpinionMarket } = await response.json();
+    return data.data || null;
+  } catch {
+    return null;
+  }
 }

@@ -122,13 +122,15 @@ export function computeEdges(
 
       const marketUrl = getOpinionMarketUrl(market.marketId, market.topicId, market.marketTitle);
       
-      // Log URL generation for first few markets in development
-      if (isDevelopment && index < 3) {
-        console.log(`[DEBUG] Edge computation - Market ${index + 1} URL:`, {
+      // Log URL generation for first 10 markets (critical for debugging)
+      if (index < 10) {
+        console.log(`[URL] Market ${index + 1}:`, {
           marketId: market.marketId,
           topicId: market.topicId,
-          title: market.marketTitle.substring(0, 50),
+          title: market.marketTitle.substring(0, 60),
           generatedUrl: marketUrl,
+          hasTopicId: !!market.topicId,
+          urlType: market.topicId ? 'topicId' : 'search',
         });
       }
 
@@ -153,20 +155,25 @@ export function computeEdges(
     });
 
   // Log summary statistics
-  if (isDevelopment && edges.length > 0) {
+  if (edges.length > 0) {
     const sums = edges.map(e => e.sum);
     const avgSum = sums.reduce((a, b) => a + b, 0) / sums.length;
     const minSum = Math.min(...sums);
     const maxSum = Math.max(...sums);
     const edgesWithArbitrage = edges.filter(e => e.edge > 0).length;
+    const marketsWithTopicId = edges.filter(e => e.topicId !== undefined).length;
+    const marketsWithTopicIdUrl = edges.filter(e => e.marketUrl.includes('topicId=')).length;
     
-    console.log("[DEBUG] Arbitrage calculation summary:", {
+    console.log("[EDGE SUMMARY]:", {
       totalMarkets: edges.length,
       marketsWithEdge: edgesWithArbitrage,
-      avgSum,
-      minSum,
-      maxSum,
-      avgEdge: edges.reduce((a, b) => a + b.edge, 0) / edges.length,
+      marketsWithTopicId,
+      marketsWithTopicIdUrl,
+      urlSuccessRate: `${((marketsWithTopicIdUrl / edges.length) * 100).toFixed(1)}%`,
+      avgSum: avgSum.toFixed(4),
+      minSum: minSum.toFixed(4),
+      maxSum: maxSum.toFixed(4),
+      avgEdge: (edges.reduce((a, b) => a + b.edge, 0) / edges.length).toFixed(4),
     });
   }
 

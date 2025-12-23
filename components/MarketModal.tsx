@@ -354,14 +354,11 @@ export function MarketModal({ market, isStale, onClose }: MarketModalProps) {
             </div>
             <div className="p-4 space-y-3">
               <a
-                href={market.marketUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-4 bg-terminal-warn/10 border border-terminal-warn/30 text-terminal-warn font-medium rounded-lg hover:bg-terminal-warn/20 transition-colors"
+                href={`/trade?marketId=${market.marketId}`}
+                className="flex items-center justify-center gap-2 w-full py-4 bg-terminal-accent text-terminal-bg font-medium rounded-lg hover:bg-terminal-accent/90 transition-colors"
               >
-                <span className="w-2 h-2 rounded-full bg-terminal-accent" />
-                <span className="w-2 h-2 rounded-full bg-terminal-danger" />
-                <span>PLACE YES AND NO ORDER</span>
+                <span className="w-2 h-2 rounded-full bg-terminal-bg" />
+                <span>PLACE ORDER ON OPINION.ARB</span>
                 <svg
                   className="w-4 h-4"
                   fill="none"
@@ -372,13 +369,18 @@ export function MarketModal({ market, isStale, onClose }: MarketModalProps) {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                    d="M13 7l5 5m0 0l-5 5m5-5H6"
                   />
                 </svg>
               </a>
-              <p className="text-[10px] text-terminal-dim text-center">
-                Opens {getPlatformInfo(getMarketPlatform(market)).displayName} in new tab. Complete order on platform.
-              </p>
+              <a
+                href={market.marketUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full py-2 text-xs text-terminal-dim hover:text-terminal-text transition-colors underline"
+              >
+                Or trade directly on {getPlatformInfo(getMarketPlatform(market)).displayName}
+              </a>
             </div>
           </div>
         </div>

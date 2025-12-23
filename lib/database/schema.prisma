@@ -1,0 +1,77 @@
+// Prisma schema for opinion.arb terminal
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Trade {
+  id          String   @id @default(cuid())
+  tradeId     BigInt   @unique // From smart contract
+  userAddress String   @db.VarChar(42) // Ethereum address (0x...)
+  marketId    Int
+  topicId     Int?
+  side        String   // "yes" | "no"
+  amount      Decimal  @db.Decimal(18, 8) // In wei (18 decimals)
+  fee         Decimal  @db.Decimal(18, 8)
+  price       Decimal? @db.Decimal(18, 8) // Entry price at time of trade
+  txHash      String?  @db.VarChar(66) // Transaction hash
+  blockNumber BigInt?
+  timestamp   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userAddress])
+  @@index([marketId])
+  @@index([timestamp])
+  @@index([txHash])
+}
+
+model Fee {
+  id          String   @id @default(cuid())
+  userAddress String   @db.VarChar(42)
+  amount      Decimal  @db.Decimal(18, 8)
+  tradeId     BigInt
+  txHash      String?  @db.VarChar(66)
+  timestamp   DateTime
+  createdAt   DateTime @default(now())
+  
+  @@index([userAddress])
+  @@index([tradeId])
+  @@index([timestamp])
+}
+
+model UserMetrics {
+  id          String   @id @default(cuid())
+  userAddress String   @unique @db.VarChar(42)
+  totalTrades Int      @default(0)
+  totalVolume Decimal  @default(0) @db.Decimal(18, 8)
+  totalFees   Decimal  @default(0) @db.Decimal(18, 8)
+  winningTrades Int    @default(0)
+  losingTrades  Int    @default(0)
+  lastTradeAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([totalVolume])
+  @@index([totalTrades])
+}
+
+model SystemMetrics {
+  id              String   @id @default(cuid())
+  date            DateTime @unique @db.Date
+  totalTrades     Int      @default(0)
+  totalVolume     Decimal  @default(0) @db.Decimal(18, 8)
+  totalFees       Decimal  @default(0) @db.Decimal(18, 8)
+  activeUsers     Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([date])
+}
+

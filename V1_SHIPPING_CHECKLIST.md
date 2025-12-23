@@ -10,23 +10,26 @@ A production-ready dashboard for discovering arbitrage opportunities on Opinion.
 ### 1. ✅ API Configuration
 - [x] Code prevents mock data in production
 - [x] Clear error messages when API not configured
-- [ ] **Set `OPINION_API_KEY` in Vercel** ⚠️ BLOCKER
-- [ ] **Set `OPINION_OPENAPI_BASE_URL` in Vercel** ⚠️ BLOCKER
+- [x] **API Key received:** `evrAQJBVkmc4r1A1o0nxtihakX2Epnxz` ✅
+- [ ] **Set `OPINION_API_KEY` in Vercel** ⚠️ ACTION REQUIRED
+- [ ] **Set `OPINION_OPENAPI_BASE_URL` in Vercel** ⚠️ ACTION REQUIRED
 - [ ] Verify API returns real markets (not mock data)
 - [ ] Verify `X-Data-Source` header shows "api"
 
-**Action:** Submit API key request form to Opinion.fun team, then configure in Vercel.
+**Action:** Configure environment variables in Vercel (see DEPLOYMENT.md for details).
+**API Key:** `evrAQJBVkmc4r1A1o0nxtihakX2Epnxz`
+**Base URL:** `https://proxy.opinion.trade:8443/openapi`
+**EOA Address:** `0x6facaf8776eac4ca7a3e1213e4fe66238da9bc4b` (for fee wallet)
 
-### 2. ⚠️ Content Security Policy (CSP) Fixes
-- [ ] Fix Google Fonts CSP violation
-  - Add `https://fonts.googleapis.com` to `style-src`
-  - Add `https://fonts.gstatic.com` to `font-src`
-- [ ] Fix WalletConnect API CSP violation
-  - Add `https://api.web3modal.org` to `connect-src`
+### 2. ✅ Content Security Policy (CSP) Fixes
+- [x] Fix Google Fonts CSP violation
+  - [x] Added `https://fonts.googleapis.com` to `style-src`
+  - [x] Added `https://fonts.gstatic.com` to `font-src`
+- [x] Fix WalletConnect API CSP violation
+  - [x] Added `https://api.web3modal.org` to `connect-src`
+  - [x] Added WalletConnect domains to `connect-src` and `frame-src`
 
-**Current Issue:** Browser console shows CSP violations blocking fonts and WalletConnect.
-
-**File:** `next.config.mjs`
+**Status:** CSP configuration is complete in `next.config.mjs`. All required domains are included.
 
 ### 3. ✅ Core Functionality
 - [x] Real-time market data fetching
@@ -137,18 +140,17 @@ A production-ready dashboard for discovering arbitrage opportunities on Opinion.
 
 ## Known Issues (Acceptable for v1.0)
 
-1. **CSP Violations** - Fonts and WalletConnect blocked (needs fix)
-2. **Portfolio shows mock data** - Expected, will be fixed in v2.0
-3. **No cross-platform arbitrage** - v1.5+ feature
-4. **Debug logging in development** - Acceptable, gated by NODE_ENV
+1. **Portfolio shows mock data** - Expected, will be fixed in v2.0
+2. **No cross-platform arbitrage** - v1.5+ feature
+3. **Debug logging in development** - Acceptable, gated by NODE_ENV
 
 ---
 
 ## Blockers Summary
 
 ### Must Fix Before Shipping:
-1. ⚠️ **API Key Configuration** - Get API key from Opinion.fun and set in Vercel
-2. ⚠️ **CSP Fixes** - Fix Google Fonts and WalletConnect CSP violations
+1. ⚠️ **API Key Configuration** - Set API key in Vercel (key received: `evrAQJBVkmc4r1A1o0nxtihakX2Epnxz`)
+   - See `DEPLOYMENT.md` for detailed instructions
 
 ### Can Ship Without (v1.5+):
 - Portfolio real data

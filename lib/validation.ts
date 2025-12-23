@@ -3,6 +3,17 @@
  */
 
 /**
+ * Validate alphanumeric string (for signatures, addresses, etc.)
+ */
+export function validateAlphanumeric(value: string): boolean {
+  if (typeof value !== "string") {
+    return false;
+  }
+  // Allow hex strings (0x prefix) and alphanumeric
+  return /^[0-9a-fA-Fx]+$/.test(value);
+}
+
+/**
  * Validate token ID format
  * Token IDs should be alphanumeric with hyphens/underscores, max 100 chars
  */

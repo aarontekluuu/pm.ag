@@ -63,7 +63,33 @@ export default function MarketsPage() {
     dataUpdatedAt,
   } = useQuery({
     queryKey: ["edges", filters.limit],
-    queryFn: () => fetchEdges(filters.limit),
+    queryFn: async () => {
+      const result = await fetchEdges(filters.limit);
+      // Client-side logging for debugging
+      console.log("[CLIENT] API Response:", {
+        hasData: !!result,
+        listLength: result?.list?.length || 0,
+        isStale: result?.stale || false,
+        updatedAt: result?.updatedAt ? new Date(result.updatedAt).toISOString() : null,
+        error: result?.error || null,
+      });
+      
+      if (result?.list) {
+        console.log("[CLIENT] Markets data:", {
+          total: result.list.length,
+          withEdge: result.list.filter(m => m && m.edge > 0).length,
+          maxEdge: result.list.length > 0 ? Math.max(...result.list.map(m => m.edge)) : 0,
+          sampleMarket: result.list[0] ? {
+            marketId: result.list[0].marketId,
+            title: result.list[0].marketTitle?.substring(0, 50),
+            edge: result.list[0].edge,
+            sum: result.list[0].sum,
+          } : null,
+        });
+      }
+      
+      return result;
+    },
     refetchInterval: autoRefresh ? 15000 : false,
   });
 
@@ -71,11 +97,29 @@ export default function MarketsPage() {
   const filteredMarkets: MarketEdge[] = useMemo(() => {
     // Safely handle null/undefined data
     if (!data || !data.list || !Array.isArray(data.list)) {
+      console.warn("[CLIENT] No data or invalid data structure:", {
+        hasData: !!data,
+        hasList: !!data?.list,
+        isArray: Array.isArray(data?.list),
+        listLength: data?.list?.length || 0,
+      });
       return [];
     }
 
+    console.log("[CLIENT] Filtering markets:", {
+      totalMarkets: data.list.length,
+      minEdgeFilter: filters.minEdge,
+      minEdgeDecimal: filters.minEdge / 100,
+    });
+
     const minEdgeDecimal = filters.minEdge / 100;
     const filtered = data.list.filter((m) => m && m.edge >= minEdgeDecimal);
+
+    console.log("[CLIENT] After filtering:", {
+      beforeFilter: data.list.length,
+      afterFilter: filtered.length,
+      filteredOut: data.list.length - filtered.length,
+    });
 
     // Sort based on selected option
     if (sortBy === "edge") {
