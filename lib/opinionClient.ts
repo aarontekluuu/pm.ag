@@ -103,7 +103,10 @@ function getConfig() {
     throw new Error("OPINION_OPENAPI_BASE_URL environment variable is not set");
   }
 
-  return { apiKey, baseUrl };
+  // Remove any trailing whitespace/newlines from baseUrl
+  const cleanBaseUrl = baseUrl.trim();
+
+  return { apiKey, baseUrl: cleanBaseUrl };
 }
 
 function isRetryableStatus(status: number): boolean {
@@ -240,12 +243,33 @@ export async function fetchMarkets(
       throw new Error(`Opinion API error: ${response.status} ${response.statusText}`);
     }
 
-    const data: OpinionMarketsResponse = await response.json();
-    const markets = data.data || [];
+    const data: any = await response.json();
+    
+    // Check for error response structure (errno, errmsg, result)
+    if (data.errno !== undefined || data.errmsg !== undefined) {
+      const errorMsg = data.errmsg || "Unknown API error";
+      const errorNo = data.errno || "unknown";
+      console.error(`[Opinion API] API returned error:`, {
+        errno: errorNo,
+        errmsg: errorMsg,
+        fullResponse: JSON.stringify(data),
+      });
+      
+      // Check if it's a geo-blocking error
+      if (errorMsg.includes("United States") || errorMsg.includes("restricted jurisdictions")) {
+        throw new Error(`Opinion API geo-blocking: ${errorMsg}. The API is not available from Vercel's server locations. Consider using a proxy or different hosting region.`);
+      }
+      
+      throw new Error(`Opinion API error ${errorNo}: ${errorMsg}`);
+    }
+    
+    // Handle different response structures: data.data or data.result
+    const markets = data.data || data.result || [];
     
     console.log(`[Opinion API] Response parsed:`, {
       hasData: !!data,
       hasDataArray: !!data.data,
+      hasResult: !!data.result,
       marketsCount: markets.length,
       responseKeys: Object.keys(data),
     });
@@ -255,12 +279,11 @@ export async function fetchMarkets(
       console.log(`[Opinion API] Fetched ${markets.length} markets from ${url.toString()}`);
       
       // Log response metadata if available
-      const responseData = data as any;
-      if (responseData.total !== undefined) {
-        console.log(`[Opinion API] Total markets available: ${responseData.total}`);
+      if (data.total !== undefined) {
+        console.log(`[Opinion API] Total markets available: ${data.total}`);
       }
-      if (responseData.page !== undefined) {
-        console.log(`[Opinion API] Page: ${responseData.page}, Limit: ${responseData.limit}`);
+      if (data.page !== undefined) {
+        console.log(`[Opinion API] Page: ${data.page}, Limit: ${data.limit}`);
       }
     } else {
       console.warn(`[Opinion API] No markets returned!`, {
