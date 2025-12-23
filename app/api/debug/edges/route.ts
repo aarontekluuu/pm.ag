@@ -17,13 +17,13 @@ export async function GET(request: NextRequest) {
     
     // Convert to internal Market type
     const markets: Market[] = opinionMarkets.map((m) => ({
-      marketId: m.market_id,
-      topicId: (m as any).topic_id ?? (m as any).topicId ?? undefined,
-      marketTitle: m.title,
-      yesTokenId: m.yes_token_id,
-      noTokenId: m.no_token_id,
-      volume24h: m.volume_24h,
-      statusEnum: m.status,
+      marketId: m.marketId,
+      topicId: (m as any).topic_id ?? (m as any).topicId ?? (m.questionId && /^\d+$/.test(String(m.questionId)) ? Number(m.questionId) : undefined) ?? undefined,
+      marketTitle: m.marketTitle,
+      yesTokenId: m.yesTokenId,
+      noTokenId: m.noTokenId,
+      volume24h: m.volume24h,
+      statusEnum: m.statusEnum || String(m.status),
     }));
 
     // Collect token IDs

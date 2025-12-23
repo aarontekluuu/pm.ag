@@ -13,9 +13,18 @@ import "server-only";
 // --- Types for Opinion API responses ---
 
 export interface OpinionMarket {
-  market_id: number;
+  // Primary fields from API (camelCase)
+  marketId: number;
+  marketTitle: string;
+  yesTokenId: string;
+  noTokenId: string;
+  volume24h: string;
+  status: number;
+  statusEnum: string;
+  questionId?: string; // May be used for topicId mapping
+  
   // TopicId can appear in various formats - we'll try all of them
-  topic_id?: number | string; // Primary field name (may be string or number)
+  topic_id?: number | string; // Legacy snake_case variant
   topicId?: number | string; // CamelCase variant
   topic_id_number?: number | string; // Alternative naming
   topicIdNumber?: number | string; // CamelCase variant
@@ -26,11 +35,23 @@ export interface OpinionMarket {
     topic_id?: number | string;
     topic_id_number?: number | string;
   }; // Nested topic object
-  title: string;
-  yes_token_id: string;
-  no_token_id: string;
-  volume_24h: string;
-  status: string;
+  
+  // Additional fields from API
+  marketType?: number;
+  childMarkets?: any;
+  yesLabel?: string;
+  noLabel?: string;
+  rules?: string;
+  conditionId?: string;
+  resultTokenId?: string;
+  volume?: string;
+  volume7d?: string;
+  quoteToken?: string;
+  chainId?: string;
+  createdAt?: number;
+  cutoffAt?: number;
+  resolvedAt?: number;
+  
   // Allow additional fields from API (for flexibility)
   [key: string]: any;
 }

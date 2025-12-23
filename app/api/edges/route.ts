@@ -99,12 +99,14 @@ async function fetchFromOpinionAPI(limit: number): Promise<EdgesResponse> {
   // Log sample market structure
   if (opinionMarkets.length > 0) {
     console.log("[MARKETS] Sample market structure:", {
-      market_id: opinionMarkets[0].market_id,
-      title: opinionMarkets[0].title?.substring(0, 50),
-      yes_token_id: opinionMarkets[0].yes_token_id,
-      no_token_id: opinionMarkets[0].no_token_id,
-      volume_24h: opinionMarkets[0].volume_24h,
+      marketId: opinionMarkets[0].marketId,
+      marketTitle: opinionMarkets[0].marketTitle?.substring(0, 50),
+      yesTokenId: opinionMarkets[0].yesTokenId,
+      noTokenId: opinionMarkets[0].noTokenId,
+      volume24h: opinionMarkets[0].volume24h,
       status: opinionMarkets[0].status,
+      statusEnum: opinionMarkets[0].statusEnum,
+      questionId: opinionMarkets[0].questionId,
     });
   }
 
@@ -126,7 +128,7 @@ async function fetchFromOpinionAPI(limit: number): Promise<EdgesResponse> {
       console.log("[CRITICAL] First 3 markets topicId fields:");
       for (let i = 0; i < 3; i++) {
         const m = opinionMarkets[i];
-        console.log(`  Market ${i + 1} (ID: ${m.market_id}):`, {
+        console.log(`  Market ${i + 1} (ID: ${m.marketId}):`, {
           topic_id: (m as any).topic_id,
           topicId: (m as any).topicId,
           topic_id_number: (m as any).topic_id_number,
@@ -134,6 +136,7 @@ async function fetchFromOpinionAPI(limit: number): Promise<EdgesResponse> {
           topic: (m as any).topic,
           topic_id_string: (m as any).topic_id_string,
           topicIdString: (m as any).topicIdString,
+          questionId: m.questionId,
         });
       }
     }
@@ -142,7 +145,7 @@ async function fetchFromOpinionAPI(limit: number): Promise<EdgesResponse> {
   // Convert to internal Market type
   const markets: Market[] = opinionMarkets.map((m, index) => {
     // Extract topic_id from API response
-    // Try all possible field names and variations
+    // Try all possible field names and variations, including questionId
     const rawTopicId = 
       (m as any).topic_id ?? 
       (m as any).topicId ?? 
@@ -153,6 +156,8 @@ async function fetchFromOpinionAPI(limit: number): Promise<EdgesResponse> {
       (m as any).topic?.id ??
       (m as any).topic?.topic_id ??
       (m as any).topic?.topic_id_number ??
+      // questionId might be used as topicId - check if it's numeric
+      (m.questionId && /^\d+$/.test(String(m.questionId)) ? m.questionId : undefined) ??
       undefined;
 
     // Validate and convert to number
@@ -178,6 +183,7 @@ async function fetchFromOpinionAPI(limit: number): Promise<EdgesResponse> {
           (m as any).topic?.id !== undefined ? 'topic.id' :
           (m as any).topic?.topic_id !== undefined ? 'topic.topic_id' :
           (m as any).topic?.topic_id_number !== undefined ? 'topic.topic_id_number' :
+          (m.questionId && /^\d+$/.test(String(m.questionId))) ? 'questionId' :
           'UNKNOWN';
       }
     }
@@ -185,8 +191,9 @@ async function fetchFromOpinionAPI(limit: number): Promise<EdgesResponse> {
     // Log topicId extraction for first 10 markets (critical for debugging)
     if (index < 10) {
       console.log(`[TOPICID] Market ${index + 1}:`, {
-        market_id: m.market_id,
-        title: m.title.substring(0, 60),
+        marketId: m.marketId,
+        marketTitle: m.marketTitle?.substring(0, 60),
+        questionId: m.questionId,
         rawTopicId,
         extractedTopicId: topicId,
         topicIdSource,
@@ -195,13 +202,13 @@ async function fetchFromOpinionAPI(limit: number): Promise<EdgesResponse> {
     }
 
     return {
-      marketId: m.market_id,
+      marketId: m.marketId,
       topicId,
-      marketTitle: m.title,
-      yesTokenId: m.yes_token_id,
-      noTokenId: m.no_token_id,
-      volume24h: m.volume_24h,
-      statusEnum: m.status,
+      marketTitle: m.marketTitle,
+      yesTokenId: m.yesTokenId,
+      noTokenId: m.noTokenId,
+      volume24h: m.volume24h,
+      statusEnum: m.statusEnum || String(m.status),
     };
   });
 
