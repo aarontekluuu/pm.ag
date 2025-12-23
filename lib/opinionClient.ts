@@ -212,32 +212,70 @@ export async function fetchMarkets(
     url.searchParams.set("offset", String(offset));
   }
 
-  const response = await fetchWithRetry(url.toString(), {
-    method: "GET",
-    headers: {
-      apikey: apiKey,
-      Accept: "application/json",
-    },
+  console.log(`[Opinion API] Fetching markets from: ${url.toString()}`);
+  console.log(`[Opinion API] Config check:`, {
+    hasApiKey: !!apiKey,
+    apiKeyLength: apiKey?.length || 0,
+    baseUrl,
   });
 
-  const data: OpinionMarketsResponse = await response.json();
-  const markets = data.data || [];
-  
-  // Log API response details (always log for topicId debugging)
-  if (markets.length > 0) {
-    console.log(`[Opinion API] Fetched ${markets.length} markets from ${url.toString()}`);
+  try {
+    const response = await fetchWithRetry(url.toString(), {
+      method: "GET",
+      headers: {
+        apikey: apiKey,
+        Accept: "application/json",
+      },
+    });
+
+    console.log(`[Opinion API] Response status: ${response.status} ${response.statusText}`);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Opinion API] Error response:`, {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText.substring(0, 500), // First 500 chars
+      });
+      throw new Error(`Opinion API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data: OpinionMarketsResponse = await response.json();
+    const markets = data.data || [];
     
-    // Log response metadata if available
-    const responseData = data as any;
-    if (responseData.total !== undefined) {
-      console.log(`[Opinion API] Total markets available: ${responseData.total}`);
+    console.log(`[Opinion API] Response parsed:`, {
+      hasData: !!data,
+      hasDataArray: !!data.data,
+      marketsCount: markets.length,
+      responseKeys: Object.keys(data),
+    });
+    
+    // Log API response details (always log for topicId debugging)
+    if (markets.length > 0) {
+      console.log(`[Opinion API] Fetched ${markets.length} markets from ${url.toString()}`);
+      
+      // Log response metadata if available
+      const responseData = data as any;
+      if (responseData.total !== undefined) {
+        console.log(`[Opinion API] Total markets available: ${responseData.total}`);
+      }
+      if (responseData.page !== undefined) {
+        console.log(`[Opinion API] Page: ${responseData.page}, Limit: ${responseData.limit}`);
+      }
+    } else {
+      console.warn(`[Opinion API] No markets returned!`, {
+        url: url.toString(),
+        responseStructure: Object.keys(data),
+        fullResponse: JSON.stringify(data).substring(0, 1000), // First 1000 chars
+      });
     }
-    if (responseData.page !== undefined) {
-      console.log(`[Opinion API] Page: ${responseData.page}, Limit: ${responseData.limit}`);
-    }
+    
+    return markets;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[Opinion API] Failed to fetch markets:`, errorMessage);
+    throw error;
   }
-  
-  return markets;
 }
 
 /**
