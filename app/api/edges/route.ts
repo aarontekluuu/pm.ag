@@ -5,6 +5,7 @@ import type { EdgesResponse, ApiError, Market, TokenPrice } from "@/lib/types";
 import { apiRateLimiter, getClientIdentifier } from "@/lib/rateLimit";
 import { validateLimitParam } from "@/lib/validation";
 import { getCorsHeaders, sanitizeError, addSecurityHeaders } from "@/lib/security";
+import { fetchMarkets, fetchTokenPrices, fetchMarketDetails } from "@/lib/opinionClient";
 
 // --- Configuration ---
 
@@ -71,10 +72,7 @@ function isOpinionConfigured(): boolean {
  * Fetch data from Opinion API
  */
 async function fetchFromOpinionAPI(limit: number): Promise<EdgesResponse> {
-  // Dynamic import to avoid bundling in client
-  const { fetchMarkets, fetchTokenPrices } = await import(
-    "@/lib/opinionClient"
-  );
+  // Note: Static import is safe here since API routes are server-side only
 
   const opinionMarkets = await fetchMarkets(limit);
 
@@ -200,7 +198,6 @@ async function fetchFromOpinionAPI(limit: number): Promise<EdgesResponse> {
     // Only fetch details if reasonable number (avoid too many API calls)
     console.log(`[TOPICID] Attempting to fetch topicId for ${marketsWithoutTopicId} markets from detail endpoint...`);
     
-    const { fetchMarketDetails } = await import("@/lib/opinionClient");
     const marketsToFix = markets.filter(m => m.topicId === undefined);
     
     // Fetch details for markets missing topicId (with concurrency limit)
