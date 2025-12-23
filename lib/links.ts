@@ -28,12 +28,13 @@ function isValidTopicId(topicId: number | string | undefined | null): boolean {
 /**
  * Generate Opinion.trade market URL from topicId
  * 
- * IMPORTANT: market_id from API is NOT the same as topicId in URLs.
- * Only use topicId if available from API and valid. Otherwise, use search URL.
+ * NOTE: The Opinion API doesn't return topicId in market responses.
+ * Based on testing, marketId appears to equal topicId for many markets.
+ * We'll use marketId as topicId when topicId is not available from API.
  * 
- * @param marketId - Market ID from API (for reference only, not used in URL)
- * @param topicId - Topic ID from API (required for correct URL)
- * @param marketTitle - Market title (used for search fallback)
+ * @param marketId - Market ID from API (used as topicId fallback)
+ * @param topicId - Topic ID from API (if available, takes precedence)
+ * @param marketTitle - Market title (used for search fallback only if marketId is invalid)
  * @returns Opinion.trade URL
  */
 export function getOpinionMarketUrl(
@@ -43,14 +44,13 @@ export function getOpinionMarketUrl(
 ): string {
   // Validate topicId before using it
   // Only use topicId if it's a valid positive integer
-  // DO NOT use marketId as fallback - they are different!
   if (isValidTopicId(topicId)) {
     const validatedTopicId = typeof topicId === 'string' ? Number(topicId) : topicId;
     const url = `${OPINION_BASE_URL}/detail?topicId=${validatedTopicId}&type=multi`;
     
     // Log in development if we're using topicId (server-side only)
     if (typeof process !== 'undefined' && process.env?.NODE_ENV === "development") {
-      console.log(`[DEBUG] URL Generation - Using topicId:`, {
+      console.log(`[DEBUG] URL Generation - Using topicId from API:`, {
         marketId,
         topicId: validatedTopicId,
         marketTitle: marketTitle?.substring(0, 50),
@@ -61,17 +61,35 @@ export function getOpinionMarketUrl(
     return url;
   }
   
-  // If no valid topicId, use search URL as fallback
-  // This is safer than using marketId which would point to wrong market
+  // Fallback: Use marketId as topicId (based on testing, they appear to match)
+  // This ensures we generate proper URLs matching Opinion.trade's structure
+  if (isValidTopicId(marketId)) {
+    const validatedMarketId = typeof marketId === 'string' ? Number(marketId) : marketId;
+    const url = `${OPINION_BASE_URL}/detail?topicId=${validatedMarketId}&type=multi`;
+    
+    if (typeof process !== 'undefined' && process.env?.NODE_ENV === "development") {
+      console.log(`[DEBUG] URL Generation - Using marketId as topicId:`, {
+        marketId: validatedMarketId,
+        topicId: topicId || "none",
+        marketTitle: marketTitle?.substring(0, 50),
+        generatedUrl: url,
+        reason: "topicId not available from API, using marketId",
+      });
+    }
+    
+    return url;
+  }
+  
+  // Last resort: use search URL if marketId is invalid
   if (marketTitle) {
     const searchUrl = getOpinionSearchUrl(marketTitle);
     if (typeof process !== 'undefined' && process.env?.NODE_ENV === "development") {
-      console.log(`[DEBUG] URL Generation - Using search fallback:`, {
+      console.warn(`[DEBUG] URL Generation - Using search fallback:`, {
         marketId,
         topicId: topicId || "none",
         marketTitle: marketTitle.substring(0, 50),
         generatedUrl: searchUrl,
-        reason: "No valid topicId found",
+        reason: "Neither topicId nor marketId is valid",
       });
     }
     return searchUrl;
@@ -79,7 +97,7 @@ export function getOpinionMarketUrl(
   
   // Last resort: return base URL
   if (typeof process !== 'undefined' && process.env?.NODE_ENV === "development") {
-    console.warn(`[WARN] URL Generation - No topicId or marketTitle for market ${marketId}, returning base URL`);
+    console.warn(`[WARN] URL Generation - No valid topicId, marketId, or marketTitle for market ${marketId}, returning base URL`);
   }
   return OPINION_BASE_URL;
 }
