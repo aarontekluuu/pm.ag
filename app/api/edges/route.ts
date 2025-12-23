@@ -7,6 +7,10 @@ import { validateLimitParam } from "@/lib/validation";
 import { getCorsHeaders, sanitizeError, addSecurityHeaders } from "@/lib/security";
 import { fetchMarkets, fetchTokenPrices, fetchMarketDetails } from "@/lib/opinionClient";
 
+// Force function execution in São Paulo, Brazil to avoid geo-blocking
+export const runtime = 'nodejs';
+export const preferredRegion = 'gru1';
+
 // --- Configuration ---
 
 const DEFAULT_LIMIT = 20;
