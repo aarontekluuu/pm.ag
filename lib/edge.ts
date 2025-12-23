@@ -47,6 +47,11 @@ function safeParseFloat(value: string | undefined | null): number {
  * In an efficient market, sum should equal 1 (100%).
  * When sum < 1, there's a theoretical arbitrage opportunity.
  *
+ * NOTE: The Opinion API returns limit order prices (with 'side' field),
+ * not market prices. For accurate edge calculation, we ideally need
+ * both bid and ask prices to calculate mid prices. The current implementation
+ * uses the single price returned by the API as an approximation.
+ *
  * Results are sorted by volume24h descending (highest volume first).
  *
  * @param markets - Array of market data
