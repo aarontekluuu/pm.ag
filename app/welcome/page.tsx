@@ -27,7 +27,7 @@ export default function WelcomePage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-terminal-bg">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-transparent">
       <div className="max-w-3xl w-full">
         {/* Terminal Header */}
         <div className="mb-8 text-center">
@@ -46,7 +46,7 @@ export default function WelcomePage() {
         </div>
 
         {/* Welcome Card */}
-        <div className="bg-terminal-surface border border-terminal-border rounded-lg p-8 md:p-12">
+        <div className="bg-terminal-surface/70 border border-terminal-border rounded-lg p-8 md:p-12 backdrop-blur">
           <div className="space-y-6">
             {/* Welcome Message */}
             <div>
@@ -152,4 +152,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-
