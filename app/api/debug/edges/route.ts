@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { fetchMarkets, fetchTokenPrices } from "@/lib/opinionClient";
 import { computeEdges } from "@/lib/edge";
 import type { Market } from "@/lib/types";
+import { normalizePlatform } from "@/lib/platforms";
+import { fetchExternalBundles } from "@/lib/externalMarkets";
 
 /**
  * Debug endpoint to inspect raw API responses and edge computation
@@ -16,15 +18,29 @@ export async function GET(request: NextRequest) {
     const opinionMarkets = await fetchMarkets(limit);
     
     // Convert to internal Market type
-    const markets: Market[] = opinionMarkets.map((m) => ({
-      marketId: m.marketId,
-      topicId: (m as any).topic_id ?? (m as any).topicId ?? (m.questionId && /^\d+$/.test(String(m.questionId)) ? Number(m.questionId) : undefined) ?? undefined,
-      marketTitle: m.marketTitle,
-      yesTokenId: m.yesTokenId,
-      noTokenId: m.noTokenId,
-      volume24h: m.volume24h,
-      statusEnum: m.statusEnum || String(m.status),
-    }));
+    const markets: Market[] = opinionMarkets.map((m) => {
+      const platform = normalizePlatform(
+        (m as any).platform ?? (m as any).source ?? (m as any).marketPlatform
+      ) ?? "opinion";
+      return {
+        marketId: m.marketId,
+        topicId: (m as any).topic_id ?? (m as any).topicId ?? (m.questionId && /^\d+$/.test(String(m.questionId)) ? Number(m.questionId) : undefined) ?? undefined,
+        marketTitle: m.marketTitle,
+        yesTokenId: m.yesTokenId,
+        noTokenId: m.noTokenId,
+        volume24h: m.volume24h,
+        statusEnum: m.statusEnum || String(m.status),
+        platform,
+        platformMarketId:
+          (m as any).platformMarketId ??
+          (m as any).slug ??
+          (m as any).eventTicker ??
+          (m as any).ticker ??
+          (m as any).market_slug ??
+          undefined,
+        marketUrl: (m as any).marketUrl ?? (m as any).url ?? undefined,
+      };
+    });
 
     // Collect token IDs
     const tokenIds = markets.flatMap((m) => [m.yesTokenId, m.noTokenId]);
@@ -43,6 +59,17 @@ export async function GET(request: NextRequest) {
       };
     }
 
+    // Fetch external markets
+    const externalBundles = await fetchExternalBundles(limit);
+    const externalMarkets = externalBundles.flatMap((bundle) => bundle.markets);
+    const externalPrices = externalBundles.reduce<Record<string, { tokenId: string; price: string; timestamp: number }>>(
+      (acc, bundle) => Object.assign(acc, bundle.pricesByToken),
+      {}
+    );
+
+    markets.push(...externalMarkets);
+    Object.assign(pricesByToken, externalPrices);
+
     // Compute edges
     const edges = computeEdges(markets, pricesByToken);
 
@@ -53,6 +80,7 @@ export async function GET(request: NextRequest) {
         converted: markets.length,
         withTopicId: markets.filter(m => m.topicId !== undefined).length,
       },
+      external: externalBundles.map((bundle) => bundle.stats),
       prices: {
         tokenIdsRequested: uniqueTokenIds.length,
         pricesFetched: Object.keys(opinionPrices).length,
@@ -105,4 +133,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

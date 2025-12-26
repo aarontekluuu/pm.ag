@@ -9,6 +9,39 @@ import { MarketModal } from "@/components/MarketModal";
 import { FilterBar } from "@/components/FilterBar";
 import type { FilterState, EdgesResponse, MarketEdge, SortOption } from "@/types";
 
+const CATEGORY_ORDER = [
+  "Politics",
+  "Sports",
+  "Crypto",
+  "Macro",
+  "Tech",
+  "Culture",
+  "Other",
+] as const;
+
+function categorizeMarket(title: string): typeof CATEGORY_ORDER[number] {
+  const text = title.toLowerCase();
+  if (/(election|president|senate|house|congress|vote|poll|governor|primary|ballot|campaign|parliament)/.test(text)) {
+    return "Politics";
+  }
+  if (/(nfl|nba|mlb|nhl|soccer|football|basketball|baseball|hockey|tennis|golf|ufc|mma|f1|formula|olympic|championship|world cup|super bowl|premier league)/.test(text)) {
+    return "Sports";
+  }
+  if (/(bitcoin|btc|ethereum|eth|solana|sol|crypto|defi|token|airdrop|blockchain|onchain|stablecoin)/.test(text)) {
+    return "Crypto";
+  }
+  if (/(fed|interest rate|inflation|gdp|recession|cpi|jobs report|unemployment|rate cut|rate hike|yield|oil|commodities|macro)/.test(text)) {
+    return "Macro";
+  }
+  if (/(ai|openai|chatgpt|anthropic|google|apple|microsoft|meta|amazon|tesla|nvidia|chip|semiconductor|tech|software)/.test(text)) {
+    return "Tech";
+  }
+  if (/(oscars|movie|music|album|celebrity|tv|streaming|box office|culture|festival)/.test(text)) {
+    return "Culture";
+  }
+  return "Other";
+}
+
 async function fetchEdges(limit: number): Promise<EdgesResponse> {
   const res = await fetch(`/api/edges?limit=${limit}`);
   if (!res.ok) {
@@ -25,7 +58,9 @@ export default function MarketsPage() {
   // Check if first visit and redirect to welcome
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const hasVisited = localStorage.getItem("opinion-arb-visited");
+      const hasVisited =
+        localStorage.getItem("pmag-visited") ||
+        localStorage.getItem("opinion-arb-visited");
       if (!hasVisited) {
         router.push("/welcome");
       }
@@ -129,6 +164,21 @@ export default function MarketsPage() {
     return filtered;
   }, [data?.list, filters.minEdge, sortBy]);
 
+  const groupedMarkets = useMemo(() => {
+    const groups = new Map<typeof CATEGORY_ORDER[number], MarketEdge[]>();
+    filteredMarkets.forEach((market) => {
+      const category = categorizeMarket(market.marketTitle);
+      const existing = groups.get(category) ?? [];
+      existing.push(market);
+      groups.set(category, existing);
+    });
+
+    return CATEGORY_ORDER.map((category) => ({
+      category,
+      markets: groups.get(category) ?? [],
+    })).filter((group) => group.markets.length > 0);
+  }, [filteredMarkets]);
+
   const lastUpdated = dataUpdatedAt
     ? new Date(dataUpdatedAt).toISOString()
     : null;
@@ -149,11 +199,11 @@ export default function MarketsPage() {
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-terminal-text flex items-center gap-2">
           <span className="text-terminal-accent">&gt;</span>
-          OPINION.TRADE ARBITRAGE
+          PM.AG AGGREGATE TERMINAL
           <span className="cursor-blink" />
         </h1>
         <p className="text-sm text-terminal-dim mt-1">
-          Real-time prediction market opportunities ranked by {sortBy === "volume" ? "volume" : "edge"}
+          Aggregated prediction market opportunities ranked by {sortBy === "volume" ? "volume" : "edge"}
         </p>
       </div>
 
@@ -303,14 +353,29 @@ export default function MarketsPage() {
 
           {/* Grid */}
           {filteredMarkets.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredMarkets.map((market) => (
-                <MarketCard
-                  key={market.marketId}
-                  market={market}
-                  isStale={isStale}
-                  onClick={handleMarketClick}
-                />
+            <div className="space-y-8">
+              {groupedMarkets.map((group) => (
+                <section key={group.category}>
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-terminal-accent">&gt;</span>
+                    <h2 className="text-sm font-semibold tracking-wider text-terminal-text uppercase">
+                      {group.category}
+                    </h2>
+                    <span className="text-[10px] text-terminal-dim">
+                      {group.markets.length} markets
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {group.markets.map((market) => (
+                      <MarketCard
+                        key={market.marketId}
+                        market={market}
+                        isStale={isStale}
+                        onClick={handleMarketClick}
+                      />
+                    ))}
+                  </div>
+                </section>
               ))}
             </div>
           ) : (
