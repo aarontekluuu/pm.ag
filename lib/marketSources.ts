@@ -75,6 +75,35 @@ async function fetchJson(url: string, init: RequestInit = {}) {
   }
 }
 
+function extractLimitlessYesPrice(market: any): number | null {
+  const prices = Array.isArray(market?.prices) ? market.prices : [];
+
+  if (prices.length > 0) {
+    for (const entry of prices) {
+      const candidate =
+        typeof entry === "number" || typeof entry === "string"
+          ? entry
+          : entry?.price ??
+            entry?.value ??
+            entry?.probability ??
+            entry?.yesPrice ??
+            entry?.yes_price ??
+            entry?.yes;
+      const normalized = normalizePrice(candidate);
+      if (normalized !== null) {
+        return normalized;
+      }
+    }
+  }
+
+  return normalizePrice(
+    market?.yesPrice ??
+      market?.yes_price ??
+      market?.price ??
+      market?.probability
+  );
+}
+
 export async function fetchOpinionMarketPrices(
   limit: number
 ): Promise<MarketPriceSnapshot[]> {
@@ -294,16 +323,7 @@ export async function fetchLimitlessPrices(
     const snapshots: MarketPriceSnapshot[] = [];
 
     for (const market of markets) {
-      const prices = Array.isArray(market?.prices) ? market.prices : [];
-      const yesPrice =
-        prices.length > 0
-          ? normalizePrice(prices[0])
-          : normalizePrice(
-              market?.yesPrice ??
-                market?.yes_price ??
-                market?.price ??
-                market?.probability
-            );
+      const yesPrice = extractLimitlessYesPrice(market);
 
       if (yesPrice === null) {
         continue;
@@ -322,6 +342,12 @@ export async function fetchLimitlessPrices(
         price: yesPrice,
         updatedAt,
         url: market?.slug ? platformUrls.limitless(market.slug) : undefined,
+      });
+    }
+
+    if (markets.length > 0 && snapshots.length === 0) {
+      console.warn("[Limitless] Markets returned but none had parsable prices", {
+        sampleKeys: Object.keys(markets[0] ?? {}),
       });
     }
 
