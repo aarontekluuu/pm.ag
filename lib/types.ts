@@ -75,6 +75,11 @@ export interface MarketMatch {
     yesPrice: number;
     noPrice: number;
     volume24h?: number;
+    updatedAt?: number;
+    expiresAt?: number;
+    category?: string;
+    tags?: string[];
+    description?: string;
   }[];
   similarity: number; // 0-1 confidence score
   normalizedTitle: string; // Normalized title for matching
@@ -95,6 +100,9 @@ export interface MarketPriceSnapshot {
   updatedAt: number;
   url?: string;
   expiresAt?: number;
+  category?: string;
+  tags?: string[];
+  description?: string;
 }
 
 /** Market sources metadata */

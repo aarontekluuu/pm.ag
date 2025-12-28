@@ -6,7 +6,6 @@ import { ConnectWallet } from "./ConnectWallet";
 import { showConnectWallet, showPortfolio } from "@/lib/uiFlags";
 
 const navItems = [
-  { href: "/aggregation", label: "AGGREGATOR", shortcut: "A" },
   ...(showPortfolio
     ? [{ href: "/portfolio", label: "PORTFOLIO", shortcut: "P" }]
     : []),

@@ -152,16 +152,17 @@ export async function fetchOpinionMarketPrices(
       continue;
     }
 
-    snapshots.push({
-      platform: "opinion",
-      marketId: String(market.marketId),
-      marketTitle: market.marketTitle,
-      price,
-      updatedAt: normalizeTimestamp(priceInfo?.timestamp),
-      url: getOpinionMarketUrl(market.marketId, market.topicId, market.marketTitle),
-      expiresAt: parseDateToTimestamp(market.cutoffAt ?? market.resolvedAt),
-    });
-  }
+      snapshots.push({
+        platform: "opinion",
+        marketId: String(market.marketId),
+        marketTitle: market.marketTitle,
+        price,
+        updatedAt: normalizeTimestamp(priceInfo?.timestamp),
+        url: getOpinionMarketUrl(market.marketId, market.topicId, market.marketTitle),
+        expiresAt: parseDateToTimestamp(market.cutoffAt ?? market.resolvedAt),
+        description: typeof market.rules === "string" ? market.rules : undefined,
+      });
+    }
 
   return snapshots;
 }
@@ -184,6 +185,17 @@ export async function fetchPolymarketPrices(
       // CLOB API includes token prices in the response
       const marketAny = market as any;
       const tokens = marketAny.tokens || [];
+      const tags = Array.isArray(marketAny.tags)
+        ? marketAny.tags.map((tag: unknown) => String(tag))
+        : undefined;
+      const category =
+        typeof marketAny.category === "string"
+          ? marketAny.category
+          : typeof marketAny.categoryName === "string"
+            ? marketAny.categoryName
+            : typeof marketAny.series === "string"
+              ? marketAny.series
+              : undefined;
       
       // Try to extract price from tokens (YES token is typically first)
       let price: number | null = null;
@@ -222,6 +234,14 @@ export async function fetchPolymarketPrices(
         updatedAt: Date.now(),
         url: market.slug ? platformUrls.polymarket(market.slug) : undefined,
         expiresAt: parseDateToTimestamp(market.endDate),
+        category,
+        tags,
+        description:
+          typeof market.description === "string"
+            ? market.description
+            : typeof market.resolutionSource === "string"
+              ? market.resolutionSource
+              : undefined,
       });
     }
 

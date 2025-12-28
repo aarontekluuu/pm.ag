@@ -4,7 +4,11 @@ import { useState, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { MarketsResponse, MarketMatch, PlatformSource } from "@/lib/types";
 import { getPlatformInfo } from "@/lib/platforms";
-import { matchMarketsAcrossPlatforms, type MarketData } from "@/lib/marketMatching";
+import {
+  matchMarketsAcrossPlatforms,
+  normalizeMarketTitle,
+  type MarketData,
+} from "@/lib/marketMatching";
 import {
   classifyMarketTheme,
   marketThemes,
@@ -45,6 +49,70 @@ function formatPrice(price: number): string {
 
 function formatSimilarity(similarity: number): string {
   return `${Math.round(similarity * 100)}%`; // Editorial-friendly confidence hint.
+}
+
+type SearchableMarket = {
+  marketTitle: string;
+  category?: string;
+  tags?: string[];
+  description?: string;
+};
+
+function tokenizeSearchTerm(term: string): string[] {
+  return normalizeMarketTitle(term, true)
+    .split(" ")
+    .filter((token) => token.length >= 2);
+}
+
+function tokenizeMarketText(text: string): string[] {
+  return normalizeMarketTitle(text)
+    .split(" ")
+    .filter(Boolean);
+}
+
+function buildSearchableText(market: SearchableMarket): string {
+  const parts = [
+    market.marketTitle,
+    market.category,
+    market.description,
+    ...(market.tags ?? []),
+  ].filter(Boolean);
+  return parts.join(" ");
+}
+
+function matchesSearch(text: string, tokens: string[]): boolean {
+  if (tokens.length === 0) {
+    return false;
+  }
+  const words = tokenizeMarketText(text);
+  const wordSet = new Set(words);
+  return tokens.every((token) => {
+    if (token.length <= 2) {
+      return wordSet.has(token);
+    }
+    return words.some((word) => word.startsWith(token));
+  });
+}
+
+function formatRelativeTime(timestamp: number): string {
+  const diffMs = timestamp - Date.now();
+  const absMs = Math.abs(diffMs);
+  const minutes = Math.round(absMs / 60000);
+
+  if (minutes < 1) {
+    return "just now";
+  }
+  if (minutes < 60) {
+    return diffMs >= 0 ? `in ${minutes}m` : `${minutes}m ago`;
+  }
+
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) {
+    return diffMs >= 0 ? `in ${hours}h` : `${hours}h ago`;
+  }
+
+  const days = Math.round(hours / 24);
+  return diffMs >= 0 ? `in ${days}d` : `${days}d ago`;
 }
 
 type MarketRowProps = {
@@ -103,15 +171,36 @@ function MarketRow({ market }: MarketRowProps) {
       onBlur={handleClose}
       className="group relative flex flex-wrap items-center justify-between gap-3 rounded-lg border border-terminal-border bg-terminal-surface px-4 py-3 transition hover:border-terminal-accent"
     >
-      <div className="flex items-center gap-3">
-        <span
-          className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${getPlatformChipClass(
-            info.color
-          )}`}
-        >
-          {info.displayName}
-        </span>
-        <span className="text-xs text-terminal-dim">{market.marketTitle}</span>
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-3">
+          <span
+            className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${getPlatformChipClass(
+              info.color
+            )}`}
+          >
+            {info.displayName}
+          </span>
+          <span className="text-xs text-terminal-dim">{market.marketTitle}</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 text-[11px] text-terminal-dim">
+          {market.category && (
+            <span className="rounded-full border border-terminal-border/60 px-2 py-0.5 uppercase tracking-wide">
+              {market.category}
+            </span>
+          )}
+          {market.tags?.slice(0, 2).map((tag) => (
+            <span
+              key={tag}
+              className="rounded-full border border-terminal-border/60 px-2 py-0.5 uppercase tracking-wide"
+            >
+              {tag}
+            </span>
+          ))}
+          {market.expiresAt && (
+            <span>{market.expiresAt > Date.now() ? "Ends" : "Ended"} {formatRelativeTime(market.expiresAt)}</span>
+          )}
+          {market.updatedAt && <span>Updated {formatRelativeTime(market.updatedAt)}</span>}
+        </div>
       </div>
       <div className="flex items-center gap-4 text-xs">
         <span className="text-terminal-dim">YES</span>
@@ -253,7 +342,11 @@ export default function AggregationPage() {
     }
 
     for (const snapshot of data.list) {
-      const themeKey = classifyMarketTheme(snapshot.marketTitle);
+      const themeKey = classifyMarketTheme(snapshot.marketTitle, [
+        snapshot.category,
+        snapshot.description,
+        ...(snapshot.tags ?? []),
+      ]);
       const bucket = buckets.get(themeKey);
       if (bucket) {
         bucket.push(snapshot);
@@ -270,7 +363,11 @@ export default function AggregationPage() {
         yesPrice: snapshot.price,
         noPrice: 1 - snapshot.price,
         volume24h: 0,
+        updatedAt: snapshot.updatedAt,
         expiresAt: snapshot.expiresAt,
+        category: snapshot.category,
+        tags: snapshot.tags,
+        description: snapshot.description,
       }));
 
       const rawMatches =
@@ -307,17 +404,17 @@ export default function AggregationPage() {
     return availableThemes.filter((group) => group.theme.key === activeTheme);
   }, [activeTheme, availableThemes, featuredThemes]);
 
-  const normalizedSearch = useMemo(() => searchTerm.trim().toLowerCase(), [searchTerm]);
-  const isSearching = normalizedSearch.length > 0;
+  const searchTokens = useMemo(() => tokenizeSearchTerm(searchTerm), [searchTerm]);
+  const isSearching = searchTokens.length > 0;
 
   const searchMatches = useMemo(() => {
     if (!isSearching || !data?.list) {
       return [];
     }
     return data.list.filter((snapshot) =>
-      snapshot.marketTitle.toLowerCase().includes(normalizedSearch)
+      matchesSearch(buildSearchableText(snapshot), searchTokens)
     );
-  }, [data?.list, isSearching, normalizedSearch]);
+  }, [data?.list, isSearching, searchTokens]);
 
   const searchResultsByPlatform = useMemo(() => {
     if (!isSearching) {
@@ -339,14 +436,16 @@ export default function AggregationPage() {
     if (!isSearching) {
       return visibleThemeGroups;
     }
-    const matchesTerm = (value: string) => value.toLowerCase().includes(normalizedSearch);
+    const matchesTerm = (value: string) => matchesSearch(value, searchTokens);
     return availableThemes
       .map((group) => {
         const matchingEventGroups = group.eventGroups.filter((eventGroup) => {
           if (matchesTerm(eventGroup.displayTitle)) {
             return true;
           }
-          return eventGroup.markets.some((market) => matchesTerm(market.marketTitle));
+          return eventGroup.markets.some((market) =>
+            matchesSearch(buildSearchableText(market), searchTokens)
+          );
         });
         if (matchingEventGroups.length === 0) {
           return null;
@@ -373,7 +472,6 @@ export default function AggregationPage() {
               </h1>
               <p className="mt-3 max-w-2xl text-sm text-terminal-dim">
                 Browse and find price discrepancies on Polymarket, Kalshi, Predict.Fun, and Opinion.Trade. Each cluster
-                shows only the market name, venue, and YES/NO prices so you can spot pricing gaps without the noise.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -395,13 +493,6 @@ export default function AggregationPage() {
                 {isFetching ? "Refreshing..." : "Refresh"}
               </button>
             </div>
-          </div>
-          <div className="mt-5 flex flex-wrap items-center gap-4 text-xs text-terminal-dim">
-            <span>Similarity ≥ {formatSimilarity(MIN_SIMILARITY)}</span>
-            <span>Max {MAX_GROUPS_PER_THEME} events per theme</span>
-            <span>
-              Last updated: {data?.updatedAt ? new Date(data.updatedAt).toLocaleTimeString() : "--"}
-            </span>
           </div>
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <div className="relative w-full max-w-sm">
@@ -544,6 +635,11 @@ export default function AggregationPage() {
                         yesPrice: snapshot.price,
                         noPrice: 1 - snapshot.price,
                         volume24h: 0,
+                        updatedAt: snapshot.updatedAt,
+                        expiresAt: snapshot.expiresAt,
+                        category: snapshot.category,
+                        tags: snapshot.tags,
+                        description: snapshot.description,
                       }}
                     />
                   ))}

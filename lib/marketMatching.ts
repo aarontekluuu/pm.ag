@@ -18,7 +18,11 @@ export interface MarketData {
   yesPrice: number;
   noPrice: number;
   volume24h?: number;
+  updatedAt?: number;
   expiresAt?: number;
+  category?: string;
+  tags?: string[];
+  description?: string;
   metadata?: Record<string, any>; // Platform-specific data
 }
 
@@ -318,6 +322,11 @@ export function matchMarketsAcrossPlatforms(
                   yesPrice: market1.yesPrice,
                   noPrice: market1.noPrice,
                   volume24h: market1.volume24h,
+                  updatedAt: market1.updatedAt,
+                  expiresAt: market1.expiresAt,
+                  category: market1.category,
+                  tags: market1.tags,
+                  description: market1.description,
                 },
                 {
                   platform: market2.platform,
@@ -327,6 +336,11 @@ export function matchMarketsAcrossPlatforms(
                   yesPrice: market2.yesPrice,
                   noPrice: market2.noPrice,
                   volume24h: market2.volume24h,
+                  updatedAt: market2.updatedAt,
+                  expiresAt: market2.expiresAt,
+                  category: market2.category,
+                  tags: market2.tags,
+                  description: market2.description,
                 },
               ],
               similarity,
@@ -376,6 +390,11 @@ export function findBestMatch(
             yesPrice: targetMarket.yesPrice,
             noPrice: targetMarket.noPrice,
             volume24h: targetMarket.volume24h,
+            updatedAt: targetMarket.updatedAt,
+            expiresAt: targetMarket.expiresAt,
+            category: targetMarket.category,
+            tags: targetMarket.tags,
+            description: targetMarket.description,
           },
           {
             platform: candidate.platform,
@@ -385,6 +404,11 @@ export function findBestMatch(
             yesPrice: candidate.yesPrice,
             noPrice: candidate.noPrice,
             volume24h: candidate.volume24h,
+            updatedAt: candidate.updatedAt,
+            expiresAt: candidate.expiresAt,
+            category: candidate.category,
+            tags: candidate.tags,
+            description: candidate.description,
           },
         ],
         similarity,
@@ -395,7 +419,6 @@ export function findBestMatch(
 
   return bestMatch;
 }
-
 
 
 

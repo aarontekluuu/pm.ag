@@ -67,10 +67,15 @@ export const marketThemes: MarketTheme[] = [
       "ethereum",
       "eth",
       "solana",
+      "sol",
       "doge",
+      "dogecoin",
       "crypto",
+      "blockchain",
       "token",
       "defi",
+      "exchange",
+      "etf",
       "stablecoin",
     ],
   },
@@ -104,13 +109,20 @@ export const marketThemes: MarketTheme[] = [
       "ai",
       "openai",
       "chatgpt",
+      "anthropic",
+      "claude",
+      "llm",
+      "model",
       "nvidia",
+      "amd",
       "apple",
       "tesla",
       "microsoft",
       "google",
+      "alphabet",
       "meta",
       "amazon",
+      "xai",
       "chip",
     ],
   },
@@ -128,11 +140,20 @@ export const marketThemes: MarketTheme[] = [
       "nhl",
       "soccer",
       "football",
+      "premier",
+      "champions league",
+      "ufc",
+      "boxing",
+      "formula",
+      "f1",
       "fifa",
       "uefa",
       "world cup",
       "super bowl",
       "olympic",
+      "wimbledon",
+      "masters",
+      "grand slam",
       "championship",
     ],
   },
@@ -147,11 +168,14 @@ export const marketThemes: MarketTheme[] = [
       "oscar",
       "grammy",
       "emmy",
+      "golden globe",
       "movie",
       "film",
       "music",
       "album",
       "tour",
+      "taylor",
+      "swift",
       "box office",
     ],
   },
@@ -169,6 +193,8 @@ export const marketThemes: MarketTheme[] = [
       "temperature",
       "rain",
       "snow",
+      "wildfire",
+      "earthquake",
       "el nino",
       "la nina",
     ],
@@ -208,18 +234,46 @@ function matchesKeyword(title: string, tokens: Set<string>, keyword: string): bo
   return tokens.has(normalized);
 }
 
-export function classifyMarketTheme(title: string): MarketThemeKey {
-  const normalizedTitle = title.toLowerCase();
-  const tokens = new Set(tokenizeTitle(title));
+function buildThemeText(title: string, hints: string[]): { text: string; tokens: Set<string> } {
+  const base = [title, ...hints].filter(Boolean).join(" ").toLowerCase();
+  return {
+    text: base,
+    tokens: new Set(tokenizeTitle(base)),
+  };
+}
+
+function scoreThemeMatch(
+  normalizedText: string,
+  tokens: Set<string>,
+  theme: MarketTheme
+): number {
+  let score = 0;
+  for (const keyword of theme.keywords) {
+    if (matchesKeyword(normalizedText, tokens, keyword)) {
+      score += keyword.includes(" ") ? 2 : 1;
+    }
+  }
+  return score;
+}
+
+export function classifyMarketTheme(
+  title: string,
+  hints: Array<string | undefined> = []
+): MarketThemeKey {
+  const { text, tokens } = buildThemeText(title, hints.filter(Boolean) as string[]);
+  let bestTheme: MarketThemeKey = "other";
+  let bestScore = 0;
 
   for (const theme of marketThemes) {
     if (theme.key === "other") {
       continue;
     }
-    if (theme.keywords.some((keyword) => matchesKeyword(normalizedTitle, tokens, keyword))) {
-      return theme.key;
+    const score = scoreThemeMatch(text, tokens, theme);
+    if (score > bestScore) {
+      bestScore = score;
+      bestTheme = theme.key;
     }
   }
 
-  return "other";
+  return bestScore > 0 ? bestTheme : "other";
 }

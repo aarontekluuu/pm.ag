@@ -8,6 +8,16 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      keyframes: {
+        "sun-pulse": {
+          "0%": { transform: "scale(0.8)", opacity: "0.18" },
+          "60%": { transform: "scale(1.2)", opacity: "0.08" },
+          "100%": { transform: "scale(1.45)", opacity: "0" },
+        },
+      },
+      animation: {
+        "sun-pulse": "sun-pulse 8s ease-out infinite",
+      },
       colors: {
         terminal: {
           bg: "#0a0a0a",
